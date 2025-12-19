@@ -1,0 +1,50 @@
+﻿@page "/venues"
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject VenueApiService VenueService
+@inject NavigationManager NavManager
+
+
+<h3>Available Venues (Conferences & Journals)</h3>
+
+@if (venues == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Acronym</th>
+                <th>Type</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var venue in venues)
+            {
+                <tr>
+                    <td>@venue.Name</td>
+                    <td>@venue.Acronym</td>
+                    <td>@venue.Type</td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="@(() => NavManager.NavigateTo($"/submit/{venue.Id}"))">
+                            Select & Submit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<VenueDto>? venues;
+
+    protected override async Task OnInitializedAsync()
+    {
+        venues = await VenueService.GetAllVenuesAsync();
+    }
+}

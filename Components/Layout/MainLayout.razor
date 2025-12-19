@@ -1,0 +1,42 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject Jarvis.Web.Services.IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main class="main">
+        <!-- TOP BAR -->
+        <div class="top-row">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="me-3 text-secondary fw-bold">
+                        <i class="bi bi-person-circle me-1"></i> @context.User.Identity?.Name
+                    </span>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="Logout">
+                        <i class="bi bi-box-arrow-right"></i> Sign Out
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="login" class="btn btn-primary btn-sm">Sign In</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+
+        <!-- CONTENT -->
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthService.Logout();
+        Navigation.NavigateTo("/login", true);
+    }
+}

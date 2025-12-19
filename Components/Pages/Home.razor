@@ -1,0 +1,303 @@
+﻿@page "/"
+@layout Jarvis.Web.Components.Layout.EmptyLayout
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Authorization
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject VenueApiService VenueService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@rendermode InteractiveServer
+
+<div class="landing-wrapper">
+    <nav class="landing-nav">
+        <div class="container d-flex justify-content-between align-items-center h-100">
+            <div class="brand">JARVIS <span class="version">v1.0</span></div>
+            <div class="nav-links">
+                <button @onclick='() => Navigation.NavigateTo("login")' class="btn btn-outline-light me-2">Sign In</button>
+                <button @onclick='() => Navigation.NavigateTo("register")' class="btn btn-primary">Sign Up</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-overlay"></div>
+        <div class="container hero-content">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-3 fw-bold text-white mb-4 animate-up">
+                        The Future of <br /> <span class="text-primary-gradient">Academic Processes.</span>
+                    </h1>
+                    <p class="lead text-white-50 mb-5 animate-up delay-1">
+                        Unify conference and journal management in a single platform.
+                        AI-powered reviewer matching, rapid evaluation, and transparent process management.
+                    </p>
+                    <div class="hero-buttons animate-up delay-2">
+                        <button @onclick='() => Navigation.NavigateTo("register")' class="btn btn-primary btn-lg px-5 me-3 rounded-pill">Get Started</button>
+                        <a href="#venues" class="btn btn-outline-light btn-lg px-5 rounded-pill">Explore Venues</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="venues" class="py-5 bg-white">
+        <div class="container py-5">
+            <div class="text-center mb-5">
+                <h6 class="text-primary fw-bold text-uppercase ls-2">Opportunities</h6>
+                <h2 class="fw-bold text-dark">Active Call for Papers</h2>
+            </div>
+
+            @if (venues == null)
+            {
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            }
+            else if (!venues.Any())
+            {
+                <div class="alert alert-light text-center border">No active venues found.</div>
+            }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var venue in venues)
+                    {
+                        <div class="col-md-4">
+                            <div class="feature-card">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">@venue.Acronym</span>
+                                    <span class="text-muted small">@venue.Type</span>
+                                </div>
+                                <h4 class="fw-bold">@venue.Name</h4>
+                                <p class="text-muted small">Submit your latest research to this prestigious @venue.Type.ToLower().</p>
+                                <button @onclick='() => Navigation.NavigateTo("login")' class="btn btn-sm btn-primary w-100 mt-3 rounded-pill">Submit Manuscript</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+
+    <section id="features" class="features-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h6 class="text-primary fw-bold text-uppercase ls-2">Why JARVIS?</h6>
+                <h2 class="fw-bold text-dark">Accelerate Scientific Production</h2>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="icon-wrapper bg-blue">
+                            <i class="bi bi-lightning-charge-fill"></i>
+                        </div>
+                        <h4>Fast Workflow</h4>
+                        <p>Optimized workflows that reduce the time from submission to decision by 40%.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="icon-wrapper bg-purple">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <h4>Smart Matching</h4>
+                        <p>Advanced expertise analysis connecting manuscripts with the most suitable reviewers.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="icon-wrapper bg-green">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <h4>Secure & Transparent</h4>
+                        <p>Full protection with double-blind peer review system and encrypted data security.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="landing-footer">
+        <div class="container text-center">
+            <p class="mb-0 text-white-50">&copy; 2025 Isik University - JARVIS Project. All rights reserved.</p>
+        </div>
+    </footer>
+</div>
+
+<style>
+    .landing-wrapper {
+        font-family: 'Inter', system-ui, sans-serif;
+        overflow-x: hidden;
+    }
+
+    .landing-nav {
+        position: absolute;
+        top: 0;
+        width: 100%;
+        height: 80px;
+        z-index: 100;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(10px);
+    }
+
+    .brand {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: white;
+        letter-spacing: 2px;
+    }
+
+    .version {
+        font-size: 0.8rem;
+        background: rgba(255,255,255,0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: normal;
+        vertical-align: middle;
+    }
+
+    .hero-section {
+        height: 100vh;
+        min-height: 700px;
+        background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .hero-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #0f172a 0%, rgba(15, 23, 42, 0.85) 100%);
+        z-index: 1;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .text-primary-gradient {
+        background: linear-gradient(to right, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .features-section {
+        padding: 100px 0;
+        background-color: #f8fafc;
+    }
+
+    .feature-card {
+        background: white;
+        padding: 2.5rem;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+    }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            border-color: transparent;
+        }
+
+    .icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+
+    .bg-blue {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .bg-purple {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
+    }
+
+    .bg-green {
+        background: linear-gradient(135deg, #10b981, #059669);
+        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .feature-card h4 {
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #1e293b;
+    }
+
+    .feature-card p {
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    .landing-footer {
+        background-color: #0f172a;
+        padding: 2rem 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .animate-up {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeUp 0.8s ease forwards;
+    }
+
+    .delay-1 {
+        animation-delay: 0.2s;
+    }
+
+    .delay-2 {
+        animation-delay: 0.4s;
+    }
+
+    @@keyframes fadeUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private List<VenueDto>? venues;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/dashboard");
+            return;
+        }
+
+        try
+        {
+            venues = await VenueService.GetAllVenuesAsync();
+        }
+        catch
+        {
+            venues = new List<VenueDto>();
+        }
+    }
+}

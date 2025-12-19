@@ -1,0 +1,195 @@
+/* --- JARVIS MODERN THEME --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #0f172a; /* Gece Mavisi */
+    --primary-light: #1e293b;
+    --accent-color: #3b82f6; /* Canl? Mavi */
+    --bg-color: #f8fafc; /* Çok aç?k gri */
+    --text-color: #334155;
+    --sidebar-width: 280px;
+}
+
+body {
+    background-color: var(--bg-color);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-color);
+    margin: 0;
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    background-color: var(--primary-color);
+    position: fixed;
+    top: 0;
+    left: 0;
+    color: white;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background-color: rgba(0,0,0,0.2);
+    color: white;
+}
+
+.nav-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 1rem;
+}
+
+/* Menü Linkleri */
+.nav-item a {
+    color: #94a3b8 !important;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-right: 4px solid transparent;
+}
+
+    .nav-item a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.05);
+    }
+
+    .nav-item a.active {
+        color: white !important;
+        background-color: rgba(59, 130, 246, 0.1);
+        border-right-color: var(--accent-color);
+    }
+
+.nav-item .bi {
+    margin-right: 12px;
+    font-size: 1.2rem;
+}
+
+/* --- MAIN LAYOUT --- */
+.main {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- TOP BAR --- */
+.top-row {
+    background-color: white;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+}
+
+/* --- CONTENT AREA --- */
+.content {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* --- CARDS --- */
+.jarvis-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.jarvis-card-header {
+    background-color: white;
+    padding: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+}
+
+    .jarvis-card-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+.jarvis-card-body {
+    padding: 2rem;
+}
+
+/* --- FORM ELEMENTS --- */
+.form-control {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+}
+
+    .form-control:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+.input-group-text {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+/* --- BUTTONS --- */
+.btn-jarvis {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    transition: all 0.2s;
+}
+
+    .btn-jarvis:hover {
+        background-color: #334155;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    }
+
+.btn-outline-danger {
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+/* Mobil Uyumluluk */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 0;
+        overflow: hidden;
+    }
+
+    .main {
+        margin-left: 0;
+    }
+}

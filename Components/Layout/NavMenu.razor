@@ -1,0 +1,54 @@
+﻿<div class="sidebar-header">
+    JARVIS <span style="font-size: 0.5em; opacity: 0.7;">v1.0</span>
+</div>
+
+<div class="nav-scrollable">
+    <nav class="flex-column">
+        <!-- Herkes Dashboard'u görür -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
+                <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
+
+        <!-- SADECE YAZARLAR (Author) -->
+        <AuthorizeView Roles="Author">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="new-submission">
+                    <span class="bi bi-cloud-upload" aria-hidden="true"></span> New Submission
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-submissions">
+                    <!-- İlerde yapılacak -->
+                    <span class="bi bi-journal-text" aria-hidden="true"></span> My Submissions
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+        <!-- SADECE HAKEMLER (Reviewer) -->
+        <AuthorizeView Roles="Reviewer">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="submit-review">
+                    <span class="bi bi-pen" aria-hidden="true"></span> Submit Evaluation
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-reviews">
+                    <span class="bi bi-list-check" aria-hidden="true"></span> My Reviews
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+        <!-- SADECE EDİTÖRLER (EditorInChief, TrackChair, Admin) -->
+        <AuthorizeView Roles="EditorInChief,TrackChair,Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="all-submissions">
+                    <!-- İlerde yapılacak -->
+                    <span class="bi bi-layers-fill" aria-hidden="true"></span> All Submissions
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+    </nav>
+</div>

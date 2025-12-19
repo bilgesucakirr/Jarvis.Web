@@ -1,0 +1,204 @@
+﻿@page "/login"
+@layout Jarvis.Web.Components.Layout.EmptyLayout
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<div class="auth-container">
+    <div class="auth-visual-side">
+        <div class="auth-overlay"></div>
+        <div class="auth-content">
+            <div class="auth-logo">JARVIS</div>
+            <h3 class="text-light">Academic Conference & Journal Management</h3>
+            <p class="text-white-50 mt-3 fs-5">
+                Manage your scientific processes from a single platform.
+                Fast, Secure, and Modern.
+            </p>
+        </div>
+    </div>
+
+    <div class="auth-form-side">
+        <div class="form-wrapper">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold text-dark">Welcome Back</h2>
+                <p class="text-muted">Sign in to your account</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <div>@errorMessage</div>
+                </div>
+            }
+
+            <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
+                <DataAnnotationsValidator />
+
+                <div class="mb-4">
+                    <label class="custom-label">Email Address</label>
+                    <InputText @bind-Value="loginModel.Email" class="form-control custom-input" placeholder="name@university.edu" />
+                    <ValidationMessage For="@(() => loginModel.Email)" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="custom-label">Password</label>
+                    <InputText @bind-Value="loginModel.Password" type="password" class="form-control custom-input" placeholder="••••••••" />
+                    <ValidationMessage For="@(() => loginModel.Password)" />
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="rememberMe">
+                        <label class="form-check-label text-muted" for="rememberMe">Remember Me</label>
+                    </div>
+                    <a href="#" class="text-decoration-none small fw-bold">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 btn-custom-primary">
+                    Sign In
+                </button>
+            </EditForm>
+
+            <div class="text-center mt-4">
+                <span class="text-muted">Don't have an account?</span>
+                <a href="/register" class="fw-bold text-decoration-none ms-1">Sign Up</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        var result = await AuthService.Login(loginModel);
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+        else
+        {
+            errorMessage = result.Message;
+        }
+    }
+}
+
+<style>
+    .auth-container {
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        display: flex;
+    }
+
+    .auth-visual-side {
+        flex: 1.2;
+        background-image: url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    .auth-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(20, 30, 48, 0.85) 0%, rgba(36, 59, 85, 0.9) 100%);
+        z-index: 1;
+    }
+
+    .auth-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .auth-logo {
+        font-size: 4rem;
+        font-weight: bold;
+        letter-spacing: 5px;
+        margin-bottom: 1rem;
+        text-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+
+    .auth-form-side {
+        flex: 1;
+        background-color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        padding: 3rem;
+        box-shadow: -10px 0 20px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+
+    .form-wrapper {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .custom-input {
+        border: 2px solid #eee;
+        border-radius: 12px;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+    }
+
+        .custom-input:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+            background-color: #fff;
+        }
+
+    .custom-label {
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 8px;
+        margin-left: 4px;
+    }
+
+    .btn-custom-primary {
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-top: 1rem;
+        transition: transform 0.2s;
+    }
+
+        .btn-custom-primary:active {
+            transform: scale(0.98);
+        }
+
+    @@media (max-width: 768px) {
+        .auth-container {
+            flex-direction: column;
+        }
+
+        .auth-visual-side {
+            flex: 0.3;
+            min-height: 200px;
+        }
+
+        .auth-form-side {
+            flex: 1;
+            border-radius: 30px 30px 0 0;
+            margin-top: -20px;
+        }
+    }
+</style>
