@@ -72,4 +72,14 @@ public class SubmissionsClient
 
         return await _httpClient.GetFromJsonAsync<List<SubmissionListModel>>("api/Submissions") ?? new();
     }
+
+    public async Task<List<SubmissionStatsModel>> GetEditorSubmissionsAsync()
+    {
+        var token = await _localStorage.GetItemAsync<string>("authToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        return await _httpClient.GetFromJsonAsync<List<SubmissionStatsModel>>("api/Submissions/all") ?? new();
+    }
 }

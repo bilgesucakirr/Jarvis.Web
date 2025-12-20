@@ -1,0 +1,84 @@
+﻿@page "/editor-dashboard"
+@attribute [Authorize]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject SubmissionsClient SubmissionsClient
+@inject NavigationManager Nav
+
+@rendermode InteractiveServer
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-dark">Editor Dashboard</h2>
+        <span class="badge bg-primary fs-6">Track Chair Mode</span>
+    </div>
+
+    @if (submissions == null)
+    {
+        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ref No</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th class="text-center">Reviews</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sub in submissions)
+                        {
+                            <tr>
+                                <td><span class="badge bg-light text-dark border">@(sub.ReferenceNumber ?? "DRAFT")</span></td>
+                                <td class="fw-bold">@sub.Title</td>
+                                <td>@sub.Status</td>
+                                <td class="text-center">
+                                    <span class="badge bg-info text-dark">@sub.ReviewsCompletedCount / @sub.ReviewersAssignedCount</span>
+                                </td>
+                                <td class="text-end">
+                                    @if (sub.ReviewsCompletedCount >= 2)
+                                    {
+                                        <button class="btn btn-success btn-sm text-white" @onclick="() => MakeDecision(sub.Id)">
+                                            Make Decision
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-secondary btn-sm" disabled>Pending Reviews</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<SubmissionStatsModel>? submissions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            submissions = await SubmissionsClient.GetEditorSubmissionsAsync();
+        }
+        catch
+        {
+            submissions = new();
+        }
+    }
+
+    private void MakeDecision(Guid id)
+    {
+        Console.WriteLine($"Making decision for {id}");
+    }
+}
