@@ -1,66 +1,164 @@
-﻿@page "/editor-dashboard"
-@attribute [Authorize]
-@using Jarvis.Web.Models
+﻿@using Jarvis.Web.Models
 @using Jarvis.Web.Services
 @inject SubmissionsClient SubmissionsClient
 @inject NavigationManager Nav
 
-@rendermode InteractiveServer
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stats-card bg-white p-3 shadow-sm rounded-3 border-start border-4 border-primary">
+            <div class="text-muted small text-uppercase fw-bold ls-1">Total Submissions</div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <h2 class="mb-0 fw-bold text-dark">@(submissions?.Count ?? 0)</h2>
+                <div class="icon-circle bg-primary-subtle text-primary"><i class="bi bi-file-earmark-text"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card bg-white p-3 shadow-sm rounded-3 border-start border-4 border-warning">
+            <div class="text-muted small text-uppercase fw-bold ls-1">Pending Reviews</div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <h2 class="mb-0 fw-bold text-dark">@GetPendingCount()</h2>
+                <div class="icon-circle bg-warning-subtle text-warning"><i class="bi bi-hourglass-split"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card bg-white p-3 shadow-sm rounded-3 border-start border-4 border-success">
+            <div class="text-muted small text-uppercase fw-bold ls-1">Accepted</div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <h2 class="mb-0 fw-bold text-dark">@GetAcceptedCount()</h2>
+                <div class="icon-circle bg-success-subtle text-success"><i class="bi bi-check-lg"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-dark">Editor Dashboard</h2>
-        <span class="badge bg-primary fs-6">Track Chair Mode</span>
+<div class="card shadow-sm border-0 rounded-3">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom-0">
+        <div>
+            <h5 class="mb-0 fw-bold text-dark">Submission Management</h5>
+            <p class="text-muted small mb-0">Manage and track all academic submissions</p>
+        </div>
+        <div>
+            <button class="btn btn-light border btn-sm text-muted me-2"><i class="bi bi-filter"></i> Filter</button>
+            <button class="btn btn-primary btn-sm"><i class="bi bi-download"></i> Export</button>
+        </div>
     </div>
 
-    @if (submissions == null)
-    {
-        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
-    }
-    else
-    {
-        <div class="card shadow-sm border-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 custom-table">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-4 text-secondary text-uppercase small fw-bold">Ref No</th>
+                    <th class="text-secondary text-uppercase small fw-bold" style="width: 40%;">Title / Status</th>
+                    <th class="text-center text-secondary text-uppercase small fw-bold">Review Progress</th>
+                    <th class="text-secondary text-uppercase small fw-bold">Submitted Date</th>
+                    <th class="text-end pe-4 text-secondary text-uppercase small fw-bold">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (submissions == null)
+                {
+                    <tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-primary"></div></td></tr>
+                }
+                else if (!submissions.Any())
+                {
+                    <tr><td colspan="5" class="text-center p-5 text-muted">No submissions found in the system.</td></tr>
+                }
+                else
+                {
+                    @foreach (var sub in submissions)
+                    {
                         <tr>
-                            <th>Ref No</th>
-                            <th>Title</th>
-                            <th>Status</th>
-                            <th class="text-center">Reviews</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var sub in submissions)
-                        {
-                            <tr>
-                                <td><span class="badge bg-light text-dark border">@(sub.ReferenceNumber ?? "DRAFT")</span></td>
-                                <td class="fw-bold">@sub.Title</td>
-                                <td>@sub.Status</td>
-                                <td class="text-center">
-                                    <span class="badge bg-info text-dark">@sub.ReviewsCompletedCount / @sub.ReviewersAssignedCount</span>
-                                </td>
-                                <td class="text-end">
+                            <td class="ps-4">
+                                <span class="font-monospace text-primary bg-primary-subtle px-2 py-1 rounded small">
+                                    @(sub.ReferenceNumber ?? "DRAFT")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark mb-1">@sub.Title</div>
+                                <span class="badge rounded-pill @GetStatusBadgeClass(sub.Status) px-3">
+                                    @sub.Status
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="progress w-75" style="height: 6px;">
+                                        <div class="progress-bar @GetProgressBarColor(sub.ReviewersAssignedCount, sub.ReviewsCompletedCount)"
+                                             role="progressbar"
+                                             style="width: @GetProgressPercentage(sub.ReviewersAssignedCount, sub.ReviewsCompletedCount)%">
+                                        </div>
+                                    </div>
+                                    <span class="small text-muted mt-1">
+                                        @sub.ReviewsCompletedCount / @sub.ReviewersAssignedCount Completed
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="text-muted small">
+                                <i class="bi bi-calendar3 me-1"></i> @sub.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary rounded-start" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
                                     @if (sub.ReviewsCompletedCount >= 2)
                                     {
-                                        <button class="btn btn-success btn-sm text-white" @onclick="() => MakeDecision(sub.Id)">
-                                            Make Decision
+                                        <button class="btn btn-sm btn-success text-white" title="Make Decision" @onclick="() => MakeDecision(sub.Id)">
+                                            <i class="bi bi-gavel"></i> Decision
                                         </button>
                                     }
                                     else
                                     {
-                                        <button class="btn btn-outline-secondary btn-sm" disabled>Pending Reviews</button>
+                                        <button class="btn btn-sm btn-light text-muted border" disabled title="Waiting for reviews">
+                                            <i class="bi bi-clock"></i> Wait
+                                        </button>
                                     }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<style>
+    .ls-1 {
+        letter-spacing: 1px;
+    }
+
+    .icon-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .custom-table th {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .custom-table td {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        vertical-align: middle;
+    }
+
+    .stats-card {
+        transition: transform 0.2s;
+    }
+
+        .stats-card:hover {
+            transform: translateY(-3px);
+        }
+</style>
 
 @code {
     private List<SubmissionStatsModel>? submissions;
@@ -71,9 +169,9 @@
         {
             submissions = await SubmissionsClient.GetEditorSubmissionsAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            submissions = new();
+            Console.WriteLine(ex.Message);
         }
     }
 
@@ -81,4 +179,33 @@
     {
         Console.WriteLine($"Making decision for {id}");
     }
+
+    private string GetStatusBadgeClass(string status) => status switch
+    {
+        "Draft" => "bg-secondary-subtle text-secondary border border-secondary-subtle",
+        "Submitted" => "bg-info-subtle text-info border border-info-subtle",
+        "UnderReview" => "bg-warning-subtle text-warning border border-warning-subtle",
+        "Accepted" => "bg-success-subtle text-success border border-success-subtle",
+        "Rejected" => "bg-danger-subtle text-danger border border-danger-subtle",
+        "RevisionRequested" => "bg-primary-subtle text-primary border border-primary-subtle",
+        _ => "bg-light text-dark border"
+    };
+
+    private int GetProgressPercentage(int assigned, int completed)
+    {
+        if (assigned == 0) return 0;
+        return (int)((double)completed / assigned * 100);
+    }
+
+    private string GetProgressBarColor(int assigned, int completed)
+    {
+        if (assigned == 0) return "bg-secondary";
+        var pct = GetProgressPercentage(assigned, completed);
+        if (pct == 100) return "bg-success";
+        if (pct >= 50) return "bg-info";
+        return "bg-warning";
+    }
+
+    private int GetPendingCount() => submissions?.Count(s => s.Status == "Submitted" || s.Status == "UnderReview") ?? 0;
+    private int GetAcceptedCount() => submissions?.Count(s => s.Status == "Accepted") ?? 0;
 }

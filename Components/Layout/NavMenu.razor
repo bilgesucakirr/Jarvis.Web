@@ -1,54 +1,80 @@
-﻿<div class="sidebar-header">
-    JARVIS <span style="font-size: 0.5em; opacity: 0.7;">v1.0</span>
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="sidebar-header ps-3 pt-3 pb-3 text-white">
+    <span class="fs-4 fw-bold">JARVIS</span> <span style="font-size: 0.7em; opacity: 0.7; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 2px 5px;">v1.0</span>
 </div>
 
 <div class="nav-scrollable">
     <nav class="flex-column">
-        <!-- Herkes Dashboard'u görür -->
+
+        <!-- 1. DASHBOARD (Herkesin Ana Sayfası) -->
+        <!-- Editörler burada "Tüm Başvuruları", Yazarlar "Konferansları" görür -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
-                <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                <span class="bi bi-speedometer2-nav-menu" aria-hidden="true"></span> Dashboard
             </NavLink>
         </div>
 
-        <!-- SADECE YAZARLAR (Author) -->
+        <!-- 2. YAZAR MENÜSÜ -->
         <AuthorizeView Roles="Author">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="new-submission">
-                    <span class="bi bi-cloud-upload" aria-hidden="true"></span> New Submission
-                </NavLink>
-            </div>
+            <!-- "New Submission" linkini kaldırdık çünkü artık Dashboard'dan yapılıyor -->
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="my-submissions">
-                    <!-- İlerde yapılacak -->
-                    <span class="bi bi-journal-text" aria-hidden="true"></span> My Submissions
+                    <span class="bi bi-file-earmark-text-nav-menu" aria-hidden="true"></span> My Submissions
                 </NavLink>
             </div>
         </AuthorizeView>
 
-        <!-- SADECE HAKEMLER (Reviewer) -->
+        <!-- 3. HAKEM MENÜSÜ -->
         <AuthorizeView Roles="Reviewer">
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="submit-review">
-                    <span class="bi bi-pen" aria-hidden="true"></span> Submit Evaluation
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
                 <NavLink class="nav-link" href="my-reviews">
-                    <span class="bi bi-list-check" aria-hidden="true"></span> My Reviews
+                    <span class="bi bi-list-check-nav-menu" aria-hidden="true"></span> My Reviews
                 </NavLink>
             </div>
         </AuthorizeView>
 
-        <!-- SADECE EDİTÖRLER (EditorInChief, TrackChair, Admin) -->
+        <!-- 4. EDİTÖR MENÜSÜ -->
         <AuthorizeView Roles="EditorInChief,TrackChair,Admin">
+            <!-- Dashboard zaten yönetim paneli olduğu için ekstra linke gerek yok -->
+            <!-- İleride Kullanıcı Yönetimi vs. gelirse buraya ekleriz -->
+            @* 
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="all-submissions">
-                    <!-- İlerde yapılacak -->
-                    <span class="bi bi-layers-fill" aria-hidden="true"></span> All Submissions
+                <NavLink class="nav-link" href="users">
+                    <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Users
                 </NavLink>
-            </div>
+            </div> 
+            *@
         </AuthorizeView>
 
     </nav>
 </div>
+
+<style>
+    /* Menü İkonları İçin Ufak Stil */
+    .bi-speedometer2-nav-menu::before {
+        content: "\f59e";
+        margin-right: 10px;
+    }
+
+    .bi-file-earmark-text-nav-menu::before {
+        content: "\f38b";
+        margin-right: 10px;
+    }
+
+    .bi-list-check-nav-menu::before {
+        content: "\f473";
+        margin-right: 10px;
+    }
+
+    .bi-people-nav-menu::before {
+        content: "\f4d5";
+        margin-right: 10px;
+    }
+
+    .sidebar-header {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+</style>
