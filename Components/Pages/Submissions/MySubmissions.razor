@@ -3,6 +3,7 @@
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
 @inject SubmissionsClient SubmissionsClient
+@inject NavigationManager Navigation
 
 @rendermode InteractiveServer
 
@@ -56,8 +57,10 @@
                                         @sub.Status
                                     </span>
                                 </td>
+                                <!-- Tablodaki buton kısmını bul ve değiştir -->
                                 <td class="text-end px-4">
-                                    <button class="btn btn-outline-secondary btn-sm rounded-pill">
+                                    <button class="btn btn-outline-secondary btn-sm rounded-pill"
+                                            @onclick='() => Navigation.NavigateTo($"/submissions/{sub.Id}")'>
                                         View Details
                                     </button>
                                 </td>

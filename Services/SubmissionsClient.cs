@@ -82,4 +82,22 @@ public class SubmissionsClient
         }
         return await _httpClient.GetFromJsonAsync<List<SubmissionStatsModel>>("api/Submissions/all") ?? new();
     }
+
+    public async Task<SubmissionDetailModel?> GetSubmissionDetailAsync(Guid id)
+    {
+        var token = await _localStorage.GetItemAsync<string>("authToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<SubmissionDetailModel>($"api/Submissions/{id}");
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

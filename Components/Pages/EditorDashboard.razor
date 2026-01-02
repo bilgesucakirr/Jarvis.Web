@@ -99,7 +99,9 @@
                             </td>
                             <td class="text-end pe-4">
                                 <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-secondary rounded-start" title="View Details">
+                                    <!-- View Details butonunu bul ve değiştir -->
+                                    <button class="btn btn-sm btn-outline-secondary rounded-start" title="View Details"
+                                            @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}")'>
                                         <i class="bi bi-eye"></i>
                                     </button>
                                     @if (sub.ReviewsCompletedCount >= 2)
