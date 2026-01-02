@@ -26,9 +26,6 @@ builder.Services.AddScoped<IAuthService>(provider =>
 
 builder.Services.AddScoped(sp => new HttpClient());
 
-var reviewApiUrl = builder.Configuration["ApiBaseUrl"]
-    ?? throw new InvalidOperationException("appsettings.json içinde 'ApiBaseUrl' bulunamadı.");
-
 builder.Services.AddHttpClient<ReviewsClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7047");
@@ -41,13 +38,17 @@ builder.Services.AddHttpClient<SubmissionsClient>(client =>
 
 builder.Services.AddHttpClient<SubmissionApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7004/"); 
+    client.BaseAddress = new Uri("https://localhost:7004/");
 });
-
 
 builder.Services.AddHttpClient<VenueApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7190/");
+});
+
+builder.Services.AddHttpClient<UsersClient>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7041/");
 });
 
 var app = builder.Build();

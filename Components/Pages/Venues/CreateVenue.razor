@@ -1,0 +1,56 @@
+﻿@page "/venues/create"
+@attribute [Authorize(Roles = "EditorInChief,Admin")]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject VenueApiService VenueService
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<div class="container py-4">
+    <h3>Create New Venue</h3>
+    <p class="text-muted">Launch a new Conference or Journal.</p>
+
+    <div class="card p-4" style="max-width: 800px;">
+        <EditForm Model="model" OnValidSubmit="HandleCreate">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Venue Name</label>
+                <InputText @bind-Value="model.Name" class="form-control" placeholder="e.g. International Conference on AI" />
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Acronym</label>
+                    <InputText @bind-Value="model.Acronym" class="form-control" placeholder="e.g. ICAI 2026" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Type</label>
+                    <InputSelect @bind-Value="model.Type" class="form-select">
+                        <option value="Conference">Conference</option>
+                        <option value="Journal">Journal</option>
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">Description</label>
+                <InputTextArea @bind-Value="model.Description" class="form-control" rows="4" />
+            </div>
+
+            <button type="submit" class="btn btn-primary px-4">Create Venue</button>
+            <button type="button" class="btn btn-link text-secondary" @onclick='() => Navigation.NavigateTo("/dashboard")'>Cancel</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private CreateVenueModel model = new();
+
+    private async Task HandleCreate()
+    {
+        await VenueService.CreateVenueAsync(model);
+        Navigation.NavigateTo("/dashboard");
+    }
+}

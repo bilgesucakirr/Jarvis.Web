@@ -1,0 +1,134 @@
+﻿@page "/submissions/{SubmissionId:guid}/assign"
+@attribute [Authorize(Roles = "EditorInChief,TrackChair,Admin")]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject UsersClient UsersClient
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<div class="container py-4">
+    <button class="btn btn-link p-0 mb-3 text-decoration-none" @onclick='() => Navigation.NavigateTo("/dashboard")'>
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </button>
+    <h3>Assign Reviewer</h3>
+
+    <div class="row mt-4">
+        <!-- Arama Kısmı -->
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-bold">Find Reviewers</div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input class="form-control" @bind="keyword" placeholder="Keyword (Expertise/Name)" @onkeyup="@(e => { if (e.Key == "Enter") Search(); })" />
+                        <button class="btn btn-secondary" @onclick="Search"><i class="bi bi-search"></i></button>
+                    </div>
+
+                    @if (reviewers.Any())
+                    {
+                        <div class="list-group">
+                            @foreach (var r in reviewers)
+                            {
+                                <button type="button" class="list-group-item list-group-item-action" @onclick="() => SelectReviewer(r)">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@r.FullName</h6>
+                                    </div>
+                                    <small class="text-muted">@r.Interests</small>
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-center text-muted mt-4">No reviewers found or search not started.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Atama Kısmı -->
+        <div class="col-md-7">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-bold">Invitation Details</div>
+                <div class="card-body">
+                    @if (selectedReviewer != null)
+                    {
+                        <div class="alert alert-primary">
+                            <strong>Selected Reviewer:</strong> @selectedReviewer.FullName <br />
+                            <small>@selectedReviewer.Email</small>
+                        </div>
+
+                        <label class="form-label mt-3">Due Date</label>
+                        <input type="date" class="form-control mb-4" @bind="dueDate" />
+
+                        <button class="btn btn-success w-100" @onclick="SendInvitation">Send Invitation</button>
+                    }
+                    else
+                    {
+                        <div class="text-center p-5 text-muted">
+                            <i class="bi bi-person-plus fs-1"></i>
+                            <p class="mt-2">Select a reviewer from the left list.</p>
+                        </div>
+                    }
+
+                    @if (msg != null)
+                    {
+                        <div class="alert alert-info mt-3">@msg</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid SubmissionId { get; set; }
+    private string keyword = "";
+    private List<ReviewerDto> reviewers = new();
+    private ReviewerDto? selectedReviewer;
+    private DateTime dueDate = DateTime.Today.AddDays(14);
+    private string? msg;
+
+    private async Task Search()
+    {
+        if (string.IsNullOrWhiteSpace(keyword)) return;
+        reviewers = await UsersClient.SearchReviewersAsync(keyword);
+    }
+
+    private void SelectReviewer(ReviewerDto r)
+    {
+        selectedReviewer = r;
+        msg = null;
+    }
+
+    private async Task SendInvitation()
+    {
+        try
+        {
+            var payload = new InviteReviewerModel
+            {
+                SubmissionId = SubmissionId,
+                ReviewerUserId = Guid.Parse(selectedReviewer!.Id),
+                DueDate = dueDate
+            };
+
+            // Review.Api doğrudan çağrılıyor (Demo amaçlı)
+            var res = await Http.PostAsJsonAsync("https://localhost:7047/api/Assignments/invite", payload);
+
+            if (res.IsSuccessStatusCode)
+            {
+                msg = "Invitation sent successfully!";
+                selectedReviewer = null;
+            }
+            else
+            {
+                msg = "Error: " + await res.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            msg = ex.Message;
+        }
+    }
+}

@@ -7,60 +7,44 @@
 
 @rendermode InteractiveServer
 
-<div class="auth-container">
-    <div class="auth-visual-side register-bg">
-        <div class="auth-overlay register-overlay"></div>
-        <div class="auth-content">
-            <div class="auth-logo">JARVIS</div>
-            <h3 class="text-light">Join Us</h3>
-            <p class="text-white-50 mt-3 fs-5">
-                Be part of the digital transformation <br /> in the academic world.
-            </p>
-        </div>
-    </div>
+<div class="auth-container d-flex justify-content-center align-items-center" style="height:100vh; background:#f0f2f5;">
+    <div class="card p-4 shadow-sm" style="width: 400px;">
+        <h3 class="text-center fw-bold mb-3">Join Jarvis</h3>
 
-    <div class="auth-form-side">
-        <div class="form-wrapper">
-            <div class="text-center mb-4">
-                <h2 class="fw-bold text-dark">Create Account</h2>
-                <p class="text-muted">Start by entering your details</p>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <InputText @bind-Value="registerModel.FullName" class="form-control" />
             </div>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger" role="alert">@errorMessage</div>
-            }
-
-            <EditForm Model="registerModel" OnValidSubmit="HandleRegister" FormName="RegisterForm">
-                <DataAnnotationsValidator />
-
-                <div class="mb-3">
-                    <label class="custom-label">Full Name</label>
-                    <InputText @bind-Value="registerModel.FullName" class="form-control custom-input" placeholder="John Doe" />
-                    <ValidationMessage For="@(() => registerModel.FullName)" />
-                </div>
-
-                <div class="mb-3">
-                    <label class="custom-label">Email Address</label>
-                    <InputText @bind-Value="registerModel.Email" class="form-control custom-input" placeholder="name@university.edu" />
-                    <ValidationMessage For="@(() => registerModel.Email)" />
-                </div>
-
-                <div class="mb-4">
-                    <label class="custom-label">Password</label>
-                    <InputText @bind-Value="registerModel.Password" type="password" class="form-control custom-input" placeholder="Min. 6 characters" />
-                    <ValidationMessage For="@(() => registerModel.Password)" />
-                </div>
-
-                <button type="submit" class="btn btn-success w-100 btn-custom-primary btn-register">
-                    Sign Up
-                </button>
-            </EditForm>
-
-            <div class="text-center mt-4">
-                <span class="text-muted">Already have an account?</span>
-                <a href="/login" class="fw-bold text-decoration-none ms-1">Sign In</a>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText @bind-Value="registerModel.Email" class="form-control" />
             </div>
+
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Areas of Interest / Expertise</label>
+                <InputTextArea @bind-Value="registerModel.Interests" class="form-control" rows="3" placeholder="e.g. Machine Learning, Biology, History..." />
+                <small class="text-muted" style="font-size:0.8em;">Used for reviewer matching.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+        </EditForm>
+
+        <div class="text-center mt-3">
+            <a href="/login">Already have an account? Sign In</a>
         </div>
     </div>
 </div>
@@ -74,7 +58,7 @@
         var result = await AuthService.Register(registerModel);
         if (result.Success)
         {
-            Navigation.NavigateTo("/submit-review");
+            Navigation.NavigateTo("/dashboard");
         }
         else
         {
@@ -82,126 +66,3 @@
         }
     }
 }
-
-<style>
-    .auth-container {
-        height: 100vh;
-        width: 100vw;
-        overflow: hidden;
-        display: flex;
-    }
-
-    .auth-content {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-        padding: 2rem;
-    }
-
-    .auth-logo {
-        font-size: 4rem;
-        font-weight: bold;
-        letter-spacing: 5px;
-        margin-bottom: 1rem;
-        text-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        color: white;
-    }
-
-    .auth-form-side {
-        flex: 1;
-        background-color: #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        padding: 3rem;
-        box-shadow: -10px 0 20px rgba(0,0,0,0.1);
-        z-index: 10;
-    }
-
-    .form-wrapper {
-        width: 100%;
-        max-width: 400px;
-    }
-
-    .custom-input {
-        border: 2px solid #eee;
-        border-radius: 12px;
-        padding: 12px 15px;
-        transition: all 0.3s ease;
-        background-color: #f8f9fa;
-    }
-
-        .custom-input:focus {
-            border-color: #198754;
-            box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.1);
-            background-color: #fff;
-        }
-
-    .custom-label {
-        font-weight: 600;
-        color: #555;
-        margin-bottom: 8px;
-        margin-left: 4px;
-    }
-
-    .btn-custom-primary {
-        padding: 12px;
-        border-radius: 12px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-top: 1rem;
-        transition: transform 0.2s;
-    }
-
-        .btn-custom-primary:active {
-            transform: scale(0.98);
-        }
-
-    .auth-visual-side {
-        flex: 1.2;
-        background-size: cover;
-        background-position: center;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-    }
-
-    .register-bg {
-        background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=2573&auto=format&fit=crop');
-    }
-
-    .register-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-        background: linear-gradient(135deg, rgba(20, 50, 40, 0.85) 0%, rgba(30, 80, 60, 0.9) 100%);
-    }
-
-    .btn-register {
-        background-color: #198754;
-        border-color: #198754;
-    }
-
-    @@media (max-width: 768px) {
-        .auth-container {
-            flex-direction: column;
-        }
-
-        .auth-visual-side {
-            flex: 0.3;
-            min-height: 200px;
-        }
-
-        .auth-form-side {
-            flex: 1;
-            border-radius: 30px 30px 0 0;
-            margin-top: -20px;
-        }
-    }
-</style>

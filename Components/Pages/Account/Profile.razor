@@ -1,0 +1,173 @@
+﻿@page "/profile"
+@attribute [Authorize]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject UsersClient UsersClient
+
+@* Eğer App.razor içinde global render mode varsa aşağıdaki satırı silebilirsin, yoksa kalsın *@
+@rendermode InteractiveServer
+
+<div class="container py-4">
+    <h2 class="fw-bold mb-4">My Profile</h2>
+
+    @if (isLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Loading profile...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Error Loading Profile</h4>
+            <p>@errorMessage</p>
+            <hr>
+            <p class="mb-0">Please try refreshing the page or logging in again.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-center p-4 shadow-sm border-0">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto"
+                         style="width: 80px; height: 80px; font-size: 2rem;">
+                        @(profile?.FullName?.FirstOrDefault().ToString().ToUpper() ?? "?")
+                    </div>
+                    <h4>@profile?.FullName</h4>
+                    <p class="text-muted">@profile?.Email</p>
+                    <div class="mt-3">
+                        @if (profile?.Roles != null)
+                        {
+                            @foreach (var role in profile.Roles)
+                            {
+                                <span class="badge bg-secondary me-1">@role</span>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold">Edit Information</div>
+                    <div class="card-body">
+                        @if (isSaved)
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                Profile updated successfully!
+                                <button type="button" class="btn-close" @onclick="() => isSaved = false"></button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(saveErrorMessage))
+                        {
+                            <div class="alert alert-danger">@saveErrorMessage</div>
+                        }
+
+                        <EditForm Model="updateModel" OnValidSubmit="HandleSave">
+                            <DataAnnotationsValidator />
+
+                            <div class="mb-3">
+                                <label class="form-label">Full Name</label>
+                                <InputText @bind-Value="updateModel.FullName" class="form-control" />
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Interests / Expertise</label>
+                                <InputTextArea @bind-Value="updateModel.Interests" class="form-control" rows="4" placeholder="Keywords regarding your academic expertise..." />
+                                <div class="form-text">Used to match you with relevant submissions.</div>
+                            </div>
+
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary px-4" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    Save Changes
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UserProfileDto? profile;
+    private UpdateProfileRequest updateModel = new();
+
+    // UI Durum değişkenleri
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isSaved = false;
+    private string? errorMessage;
+    private string? saveErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            // API'den veri çek
+            profile = await UsersClient.GetProfileAsync();
+
+            if (profile != null)
+            {
+                updateModel = new UpdateProfileRequest
+                {
+                    FullName = profile.FullName,
+                    Interests = profile.Interests
+                };
+            }
+            else
+            {
+                errorMessage = "Profile data returned empty.";
+            }
+        }
+        catch (Exception ex)
+        {
+            // Hatayı ekrana yazdır ki devrenin kopmasını engelle
+            errorMessage = $"Connection error: {ex.Message}";
+            Console.WriteLine($"Profile Load Error: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        try
+        {
+            isSaving = true;
+            isSaved = false;
+            saveErrorMessage = null;
+
+            await UsersClient.UpdateProfileAsync(updateModel);
+
+            // Başarılı olursa model ve UI güncelle
+            if (profile != null)
+            {
+                profile.FullName = updateModel.FullName;
+                profile.Interests = updateModel.Interests;
+            }
+            isSaved = true;
+        }
+        catch (Exception ex)
+        {
+            saveErrorMessage = $"Could not save profile: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

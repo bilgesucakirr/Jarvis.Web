@@ -1,0 +1,84 @@
+﻿@page "/users"
+@attribute [Authorize(Roles = "Admin")]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject UsersClient UsersClient
+
+@rendermode InteractiveServer
+
+<div class="container py-4">
+    <h3>User Management</h3>
+    <p class="text-muted">Manage user roles and permissions.</p>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3">User</th>
+                        <th>Current Roles</th>
+                        <th>Assign Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users)
+                    {
+                        <tr>
+                            <td class="ps-3">
+                                <strong>@user.FullName</strong><br />
+                                <small class="text-muted">@user.Email</small>
+                            </td>
+                            <td>
+                                @foreach (var role in user.Roles)
+                                {
+                                    <span class="badge bg-secondary me-1">@role</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        Action
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><button class="dropdown-item" @onclick='() => AssignRole(user.Id, "Reviewer")'>Make Reviewer</button></li>
+                                        <li><button class="dropdown-item" @onclick='() => AssignRole(user.Id, "TrackChair")'>Make Track Chair</button></li>
+                                        <li><button class="dropdown-item" @onclick='() => AssignRole(user.Id, "EditorInChief")'>Make Editor</button></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><button class="dropdown-item text-danger" @onclick='() => AssignRole(user.Id, "Admin")'>Make Admin</button></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<UserListDto> users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await UsersClient.GetAllUsersAsync();
+    }
+
+    private async Task AssignRole(string userId, string role)
+    {
+        try
+        {
+            await UsersClient.AssignRoleAsync(userId, role);
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
