@@ -2,7 +2,6 @@
 
 namespace Jarvis.Web.Models;
 
-// --- 1. Başvuru OLUŞTURMA Modeli (Mevcut Olan) ---
 public class SubmissionModel
 {
     public Guid VenueId { get; set; }
@@ -23,15 +22,16 @@ public class SubmissionModel
 
     public int Type { get; set; }
 
-    // Etik Beyanlar
     public bool IsOriginal { get; set; }
     public bool IsNotElsewhere { get; set; }
     public bool HasConsent { get; set; }
 
+    public string SubmitterEmail { get; set; } = string.Empty;
+    public string SubmitterName { get; set; } = string.Empty;
+
     public List<AuthorModel> Authors { get; set; } = new();
 }
 
-// --- 2. Başvuru DETAY GÖRÜNTÜLEME Modelleri (Yeni Eklenenler) ---
 public class SubmissionDetailModel
 {
     public Guid Id { get; set; }
@@ -42,7 +42,6 @@ public class SubmissionDetailModel
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 
-    // AuthorModel'i yukarıda zaten tanımlı olduğu için tekrar kullanabiliriz
     public List<AuthorModel> Authors { get; set; } = new();
     public List<FileModel> Files { get; set; } = new();
 }

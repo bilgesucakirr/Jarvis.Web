@@ -18,7 +18,6 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
     {
         _localStorage = localStorage;
         _http = http;
-        // Eğer config'den okuyamazsa varsayılan adresi kullan (Hata önleyici)
         var apiUrl = config["IdentityApiUrl"] ?? "https://localhost:7041";
         _http.BaseAddress = new Uri(apiUrl);
         _anonymous = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
@@ -28,13 +27,11 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
     {
         try
         {
-            // LocalStorage okuma işlemi bazen prerendering sırasında hata verebilir, try-catch şart.
             var token = await _localStorage.GetItemAsync<string>("authToken");
 
             if (string.IsNullOrWhiteSpace(token))
                 return _anonymous;
 
-            // Token formatı bozuksa Parse işlemi patlayabilir
             var claims = ParseClaimsFromJwt(token);
 
             if (claims == null || !claims.Any())
@@ -45,10 +42,8 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
             return new AuthenticationState(
                 new ClaimsPrincipal(new ClaimsIdentity(claims, "jwt")));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // Hata oluşursa konsola yaz ama uygulamayı ÇÖKERTME, anonim döndür.
-            Console.WriteLine($"Auth Error: {ex.Message}");
             return _anonymous;
         }
     }
@@ -58,12 +53,6 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
         try
         {
             var response = await _http.PostAsJsonAsync("api/auth/login", loginModel);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new AuthResponseModel { Success = false, Message = "Sunucu hatası veya geçersiz bilgiler." };
-            }
-
             var result = await response.Content.ReadFromJsonAsync<AuthResponseModel>();
 
             if (result!.Success)
@@ -95,13 +84,6 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
         try
         {
             var response = await _http.PostAsJsonAsync("api/auth/register", registerModel);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                return new AuthResponseModel { Success = false, Message = $"Kayıt başarısız: {content}" };
-            }
-
             var result = await response.Content.ReadFromJsonAsync<AuthResponseModel>();
 
             if (result!.Success)
@@ -140,7 +122,6 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
                 {
                     if (kvp.Key == "role" || kvp.Key == ClaimTypes.Role)
                     {
-                        // Rol array olarak gelirse (birden fazla rol) veya string gelirse
                         if (kvp.Value is JsonElement element && element.ValueKind == JsonValueKind.Array)
                         {
                             foreach (var item in element.EnumerateArray())
@@ -153,6 +134,10 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
                             claims.Add(new Claim(ClaimTypes.Role, kvp.Value.ToString()!));
                         }
                     }
+                    else if (kvp.Key == "name" || kvp.Key == "unique_name" || kvp.Key == ClaimTypes.Name)
+                    {
+                        claims.Add(new Claim(ClaimTypes.Name, kvp.Value.ToString()!));
+                    }
                     else
                     {
                         claims.Add(new Claim(kvp.Key, kvp.Value.ToString()!));
@@ -164,7 +149,6 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
         }
         catch
         {
-            // Token parse edilemezse boş liste dön
             return new List<Claim>();
         }
     }

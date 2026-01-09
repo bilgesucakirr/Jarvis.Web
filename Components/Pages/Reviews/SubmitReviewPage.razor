@@ -3,107 +3,185 @@
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
 @inject ReviewsClient ReviewsClient
+@inject SubmissionsClient SubmissionsClient
 @inject NavigationManager Navigation
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
-<div class="mb-4">
-    <button class="btn btn-link p-0 text-decoration-none" @onclick='() => Navigation.NavigateTo("/dashboard")'>
-        <i class="bi bi-arrow-left"></i> Back to Dashboard
-    </button>
-    <h2 class="fw-bold text-dark mt-2">Manuscript Evaluation</h2>
-    <p class="text-muted">Assignment ID: @AssignmentId</p>
-</div>
-
-@if (isSuccess)
-{
-    <div class="alert alert-success shadow-sm border-0"><i class="bi bi-check-circle-fill me-2"></i> Evaluation submitted successfully!</div>
-}
-
-<div class="jarvis-card mb-4 border-warning">
-    <div class="jarvis-card-header bg-warning bg-opacity-10">
-        <h3 class="text-dark"><i class="bi bi-shield-lock me-2"></i> Blind Review Protocol</h3>
-    </div>
-    <div class="jarvis-card-body">
-        <p class="mb-0"><strong>Note:</strong> Author identities are hidden to ensure unbiased evaluation. Please focus strictly on the scientific merit of the work.</p>
-    </div>
-</div>
-
-<EditForm Model="@reviewModel" OnValidSubmit="HandleSubmit" FormName="EvaluationForm">
-    <DataAnnotationsValidator />
-
-    <div class="row g-4">
-        <!-- Puanlama -->
-        <div class="col-md-4">
-            <div class="jarvis-card h-100">
-                <div class="jarvis-card-body">
-                    <label class="form-label">Overall Score (1-5)</label>
-                    <InputNumber @bind-Value="reviewModel.OverallScore" class="form-control form-control-lg text-center" />
-                    <div class="mt-3 small text-muted">1: Reject, 5: Excellent</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="jarvis-card h-100">
-                <div class="jarvis-card-body">
-                    <label class="form-label">Your Confidence (1-5)</label>
-                    <InputNumber @bind-Value="reviewModel.Confidence" class="form-control form-control-lg text-center" />
-                    <div class="mt-3 small text-muted">How familiar are you with this topic?</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dosya Yükleme -->
-        <div class="col-md-4">
-            <div class="jarvis-card h-100">
-                <div class="jarvis-card-body">
-                    <label class="form-label">Annotated Manuscript</label>
-                    <InputFile OnChange="HandleFileSelected" class="form-control" />
-                    <div class="mt-2 small text-muted">Upload PDF with your comments (optional)</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Yorumlar -->
-        <div class="col-12">
-            <div class="jarvis-card">
-                <div class="jarvis-card-header"><h3>Detailed Comments</h3></div>
-                <div class="jarvis-card-body">
-                    <div class="mb-4">
-                        <label class="form-label">Comments to Author</label>
-                        <InputTextArea @bind-Value="reviewModel.CommentsToAuthor" class="form-control" rows="6" placeholder="Provide constructive feedback..." />
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label">Confidential Comments to Editor</label>
-                        <InputTextArea @bind-Value="reviewModel.CommentsToEditor" class="form-control" rows="3" placeholder="Will not be visible to the author." />
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="d-flex justify-content-end mt-4 mb-5">
-        <button type="submit" class="btn btn-jarvis btn-lg" disabled="@isSubmitting">
-            @if (isSubmitting)
-            {
-                <span>Submitting...</span>
-            }
-            else
-            {
-
-                <span><i class="bi bi-check2-all me-2"></i> Submit Final Evaluation</span>
-            }
+<div class="container py-4">
+    <div class="mb-4">
+        <button class="btn btn-link p-0 text-decoration-none" @onclick='() => Navigation.NavigateTo("/my-reviews")'>
+            <i class="bi bi-arrow-left"></i> Back to My Reviews
         </button>
+        <h2 class="fw-bold text-dark mt-2">Manuscript Evaluation</h2>
     </div>
-</EditForm>
+
+    @if (isLoading)
+    {
+        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (submission == null)
+    {
+        <div class="alert alert-danger">Unable to load submission details.</div>
+    }
+    else
+    {
+        <!-- 1. MAKALE BİLGİLERİ VE DOSYA İNDİRME (YENİ EKLENEN KISIM) -->
+        <div class="card mb-4 shadow-sm border-primary">
+            <div class="card-header bg-primary text-white fw-bold">
+                <i class="bi bi-file-earmark-text me-2"></i> Manuscript Information
+            </div>
+            <div class="card-body bg-light">
+                <h4 class="fw-bold text-dark">@submission.Title</h4>
+
+                <div class="mt-3">
+                    <span class="fw-bold text-secondary">Abstract:</span>
+                    <p class="text-muted fst-italic">@submission.Abstract</p>
+                </div>
+
+                <div class="mt-3">
+                    <h6 class="fw-bold">Attachments:</h6>
+                    @if (submission.Files.Any())
+                    {
+                        <div class="d-flex gap-2">
+                            @foreach (var file in submission.Files)
+                            {
+                                <a href="@file.FileUrl" target="_blank" class="btn btn-outline-primary bg-white">
+                                    <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i> Download @file.FileName
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-warning">No files attached.</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. PUANLAMA FORMU (MEVCUT KISIM) -->
+        @if (isSuccess)
+        {
+            <div class="alert alert-success shadow-sm border-0"><i class="bi bi-check-circle-fill me-2"></i> Evaluation submitted successfully!</div>
+        }
+
+        <div class="jarvis-card mb-4 border-warning">
+            <div class="jarvis-card-header bg-warning bg-opacity-10">
+                <h3 class="text-dark fs-5"><i class="bi bi-shield-lock me-2"></i> Blind Review Protocol</h3>
+            </div>
+            <div class="jarvis-card-body py-3">
+                <p class="mb-0 small">Author identities are hidden. Please focus strictly on the scientific merit.</p>
+            </div>
+        </div>
+
+        <EditForm Model="@reviewModel" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="jarvis-card h-100">
+                        <div class="jarvis-card-body">
+                            <label class="form-label fw-bold">Overall Score (1-5)</label>
+                            <InputNumber @bind-Value="reviewModel.OverallScore" class="form-control form-control-lg text-center" />
+                            <div class="mt-2 small text-muted d-flex justify-content-between">
+                                <span>1: Reject</span><span>5: Excellent</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="jarvis-card h-100">
+                        <div class="jarvis-card-body">
+                            <label class="form-label fw-bold">Your Confidence (1-5)</label>
+                            <InputNumber @bind-Value="reviewModel.Confidence" class="form-control form-control-lg text-center" />
+                            <div class="mt-2 small text-muted text-center">How expert are you in this field?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="jarvis-card">
+                        <div class="jarvis-card-header">Detailed Comments</div>
+                        <div class="jarvis-card-body">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Comments to Author</label>
+                                <InputTextArea @bind-Value="reviewModel.CommentsToAuthor" class="form-control" rows="6" placeholder="Provide constructive feedback..." />
+                                <ValidationMessage For="@(() => reviewModel.CommentsToAuthor)" />
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label fw-bold">Confidential Comments to Editor</label>
+                                <InputTextArea @bind-Value="reviewModel.CommentsToEditor" class="form-control" rows="3" placeholder="Will not be visible to the author." />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hakem kendi notlu dosyasını yüklemek isterse -->
+                <div class="col-12">
+                    <div class="jarvis-card">
+                        <div class="jarvis-card-body d-flex align-items-center justify-content-between">
+                            <div>
+                                <label class="form-label fw-bold mb-0">Upload Annotated Manuscript (Optional)</label>
+                                <div class="small text-muted">Upload PDF with your inline comments</div>
+                            </div>
+                            <div>
+                                <InputFile OnChange="HandleFileSelected" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4 mb-5">
+                <button type="submit" class="btn btn-jarvis btn-lg" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span>Submitting...</span>
+                    }
+                    else
+                    {
+                        <span><i class="bi bi-check2-all me-2"></i> Submit Evaluation</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+    }
+</div>
 
 @code {
     [Parameter] public Guid AssignmentId { get; set; }
+
     private SubmitReviewModel reviewModel = new();
+    private SubmissionDetailModel? submission; // Makale detaylarını tutacak
     private IBrowserFile? selectedFile;
+    private bool isLoading = true;
     private bool isSubmitting = false;
     private bool isSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 1. Assignment detayını çek (SubmissionId'yi öğrenmek için)
+            var assignment = await ReviewsClient.GetAssignmentDetailAsync(AssignmentId);
+
+            if (assignment != null)
+            {
+                // 2. Submission detayını çek (Dosyaları ve Özeti görmek için)
+                submission = await SubmissionsClient.GetSubmissionDetailAsync(assignment.SubmissionId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Load Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
 
     private void HandleFileSelected(InputFileChangeEventArgs e) => selectedFile = e.File;
 
@@ -116,9 +194,15 @@
             isSuccess = true;
             StateHasChanged();
             await Task.Delay(2000);
-            Navigation.NavigateTo("/dashboard");
+            Navigation.NavigateTo("/my-reviews");
         }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
-        finally { isSubmitting = false; }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 }

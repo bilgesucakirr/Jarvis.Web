@@ -1,0 +1,114 @@
+﻿@page "/review-response/{AssignmentId:guid}"
+@attribute [Authorize(Roles = "Reviewer")]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject ReviewsClient ReviewsClient
+@inject SubmissionsClient SubmissionsClient
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white text-center py-4">
+                    <h3 class="fw-bold mb-0">Review Invitation</h3>
+                </div>
+                <div class="card-body p-5">
+                    @if (isLoading)
+                    {
+                        <div class="text-center"><div class="spinner-border text-primary"></div></div>
+                    }
+                    else if (isProcessed)
+                    {
+                        <div class="text-center">
+                            <i class="bi bi-check-circle-fill text-success fs-1"></i>
+                            <h4 class="mt-3">Response Recorded</h4>
+                            <p class="text-muted">Thank you for your response.</p>
+                            <button class="btn btn-primary mt-3" @onclick='() => Navigation.NavigateTo("/dashboard")'>Go to Dashboard</button>
+                        </div>
+                    }
+                    else if (submission != null)
+                    {
+                        <h5 class="text-center text-muted mb-4">You have been invited to review:</h5>
+                        <h2 class="text-center fw-bold mb-4">@submission.Title</h2>
+
+                        <div class="bg-light p-4 rounded mb-4">
+                            <h6 class="fw-bold text-secondary text-uppercase small">Abstract</h6>
+                            <p class="mb-0 text-justify">@submission.Abstract</p>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <button class="btn btn-success w-100 py-3 fw-bold" @onclick="AcceptInvite">
+                                    <i class="bi bi-check-lg me-2"></i> Accept Invitation
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-danger w-100 py-3 fw-bold" @onclick="DeclineInvite">
+                                    <i class="bi bi-x-lg me-2"></i> Decline
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(errorMsg))
+                        {
+                            <div class="alert alert-danger mt-3">@errorMsg</div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid AssignmentId { get; set; }
+    private SubmissionDetailModel? submission;
+    private bool isLoading = true;
+    private bool isProcessed = false;
+    private string? errorMsg;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var assignment = await ReviewsClient.GetAssignmentDetailAsync(AssignmentId);
+            if (assignment != null)
+            {
+                if (assignment.Status == "Accepted")
+                {
+                    Navigation.NavigateTo($"/submit-review/{AssignmentId}");
+                    return;
+                }
+                submission = await SubmissionsClient.GetSubmissionDetailAsync(assignment.SubmissionId);
+            }
+        }
+        catch (Exception ex) { errorMsg = ex.Message; }
+        finally { isLoading = false; }
+    }
+
+    private async Task AcceptInvite()
+    {
+        try
+        {
+            var res = await Http.PostAsync($"https://localhost:7047/api/Assignments/{AssignmentId}/accept", null);
+            if (res.IsSuccessStatusCode) isProcessed = true;
+            else errorMsg = "Failed to accept.";
+        }
+        catch (Exception ex) { errorMsg = ex.Message; }
+    }
+
+    private async Task DeclineInvite()
+    {
+        try
+        {
+            var res = await Http.PostAsJsonAsync($"https://localhost:7047/api/Assignments/{AssignmentId}/decline", "Busy");
+            if (res.IsSuccessStatusCode) isProcessed = true;
+            else errorMsg = "Failed to decline.";
+        }
+        catch (Exception ex) { errorMsg = ex.Message; }
+    }
+}

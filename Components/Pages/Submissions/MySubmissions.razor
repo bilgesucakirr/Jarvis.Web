@@ -11,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold text-dark">My Submissions</h2>
-            <p class="text-muted small">Track the status of your academic papers</p>
+            <p class="text-muted small">Track the status of your academic papers.</p>
         </div>
     </div>
 
@@ -28,6 +28,7 @@
             <i class="bi bi-file-earmark-text fs-1 text-muted"></i>
             <p class="mt-3 mb-0 fw-bold">No submissions found.</p>
             <p class="small text-muted">You haven't submitted any papers yet.</p>
+            <button class="btn btn-primary mt-3" @onclick='() => Navigation.NavigateTo("/dashboard")'>Start New Submission</button>
         </div>
     }
     else
@@ -37,8 +38,9 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="px-4">Title</th>
-                            <th>Date Submitted</th>
+                            <th class="px-4">Ref No</th>
+                            <th>Title</th>
+                            <th>Date</th>
                             <th>Status</th>
                             <th class="text-end px-4">Actions</th>
                         </tr>
@@ -48,8 +50,10 @@
                         {
                             <tr>
                                 <td class="px-4">
+                                    <span class="font-monospace text-primary fw-bold">@(string.IsNullOrEmpty(sub.ReferenceNumber) ? "DRAFT" : sub.ReferenceNumber)</span>
+                                </td>
+                                <td>
                                     <div class="fw-bold text-dark">@sub.Title</div>
-                                    <div class="text-muted small">ID: @sub.Id.ToString().Substring(0, 8)...</div>
                                 </td>
                                 <td>@sub.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</td>
                                 <td>
@@ -57,10 +61,8 @@
                                         @sub.Status
                                     </span>
                                 </td>
-                                <!-- Tablodaki buton kısmını bul ve değiştir -->
                                 <td class="text-end px-4">
-                                    <button class="btn btn-outline-secondary btn-sm rounded-pill"
-                                            @onclick='() => Navigation.NavigateTo($"/submissions/{sub.Id}")'>
+                                    <button class="btn btn-outline-secondary btn-sm rounded-pill" @onclick='() => Navigation.NavigateTo($"/submissions/{sub.Id}")'>
                                         View Details
                                     </button>
                                 </td>
@@ -95,7 +97,6 @@
         "UnderReview" => "bg-primary-subtle text-primary",
         "Accepted" => "bg-success-subtle text-success",
         "Rejected" => "bg-danger-subtle text-danger",
-        "RevisionRequested" => "bg-warning-subtle text-warning",
         _ => "bg-light text-dark"
     };
 }

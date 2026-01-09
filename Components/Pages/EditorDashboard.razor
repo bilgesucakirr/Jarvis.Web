@@ -72,7 +72,7 @@
                         <tr>
                             <td class="ps-4">
                                 <span class="font-monospace text-primary bg-primary-subtle px-2 py-1 rounded small">
-                                    @(sub.ReferenceNumber ?? "DRAFT")
+                                    @(string.IsNullOrEmpty(sub.ReferenceNumber) ? "DRAFT" : sub.ReferenceNumber)
                                 </span>
                             </td>
                             <td>
@@ -99,21 +99,23 @@
                             </td>
                             <td class="text-end pe-4">
                                 <div class="btn-group">
-                                    <!-- View Details butonunu bul ve değiştir -->
                                     <button class="btn btn-sm btn-outline-secondary rounded-start" title="View Details"
                                             @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}")'>
                                         <i class="bi bi-eye"></i>
                                     </button>
+
+                                    @if (sub.Status != "Draft")
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" title="Assign Reviewer"
+                                                @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}/assign")'>
+                                            <i class="bi bi-person-plus-fill"></i>
+                                        </button>
+                                    }
+
                                     @if (sub.ReviewsCompletedCount >= 2)
                                     {
                                         <button class="btn btn-sm btn-success text-white" title="Make Decision" @onclick="() => MakeDecision(sub.Id)">
-                                            <i class="bi bi-gavel"></i> Decision
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <button class="btn btn-sm btn-light text-muted border" disabled title="Waiting for reviews">
-                                            <i class="bi bi-clock"></i> Wait
+                                            <i class="bi bi-gavel"></i>
                                         </button>
                                     }
                                 </div>

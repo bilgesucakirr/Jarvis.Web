@@ -3,6 +3,7 @@
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
 @inject UsersClient UsersClient
+@inject SubmissionsClient SubmissionsClient
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
@@ -14,8 +15,12 @@
     </button>
     <h3>Assign Reviewer</h3>
 
+    @if (submissionTitle != null)
+    {
+        <h5 class="text-primary">@submissionTitle</h5>
+    }
+
     <div class="row mt-4">
-        <!-- Arama Kısmı -->
         <div class="col-md-5">
             <div class="card h-100">
                 <div class="card-header bg-white fw-bold">Find Reviewers</div>
@@ -39,15 +44,10 @@
                             }
                         </div>
                     }
-                    else
-                    {
-                        <p class="text-center text-muted mt-4">No reviewers found or search not started.</p>
-                    }
                 </div>
             </div>
         </div>
 
-        <!-- Atama Kısmı -->
         <div class="col-md-7">
             <div class="card h-100">
                 <div class="card-header bg-white fw-bold">Invitation Details</div>
@@ -89,6 +89,13 @@
     private ReviewerDto? selectedReviewer;
     private DateTime dueDate = DateTime.Today.AddDays(14);
     private string? msg;
+    private string? submissionTitle;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sub = await SubmissionsClient.GetSubmissionDetailAsync(SubmissionId);
+        if (sub != null) submissionTitle = sub.Title;
+    }
 
     private async Task Search()
     {
@@ -110,10 +117,11 @@
             {
                 SubmissionId = SubmissionId,
                 ReviewerUserId = Guid.Parse(selectedReviewer!.Id),
+                ReviewerEmail = selectedReviewer.Email,
+                SubmissionTitle = submissionTitle ?? "Academic Submission",
                 DueDate = dueDate
             };
 
-            // Review.Api doğrudan çağrılıyor (Demo amaçlı)
             var res = await Http.PostAsJsonAsync("https://localhost:7047/api/Assignments/invite", payload);
 
             if (res.IsSuccessStatusCode)

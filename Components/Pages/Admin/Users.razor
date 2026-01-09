@@ -43,6 +43,8 @@
                                         <li><button class="dropdown-item" @onclick='() => AssignRole(user.Id, "Reviewer")'>Make Reviewer</button></li>
                                         <li><button class="dropdown-item" @onclick='() => AssignRole(user.Id, "TrackChair")'>Make Track Chair</button></li>
                                         <li><button class="dropdown-item" @onclick='() => AssignRole(user.Id, "EditorInChief")'>Make Editor</button></li>
+                                        <li><button class="dropdown-item text-primary" @onclick='() => AssignRole(user.Id, "Author")'>Make Author</button></li>
+
                                         <li><hr class="dropdown-divider"></li>
                                         <li><button class="dropdown-item text-danger" @onclick='() => AssignRole(user.Id, "Admin")'>Make Admin</button></li>
                                     </ul>

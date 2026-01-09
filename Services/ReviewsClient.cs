@@ -49,4 +49,17 @@ public class ReviewsClient
         return await _httpClient.GetFromJsonAsync<List<ReviewAssignmentModel>>("api/Reviews/my-assignments")
                ?? new List<ReviewAssignmentModel>();
     }
+
+    public async Task<ReviewAssignmentDetailDto?> GetAssignmentDetailAsync(Guid assignmentId)
+    {
+        await AddAuthHeader();
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ReviewAssignmentDetailDto>($"api/Assignments/{assignmentId}");
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

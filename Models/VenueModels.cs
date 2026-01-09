@@ -21,5 +21,7 @@ public class InviteReviewerModel
 {
     public Guid SubmissionId { get; set; }
     public Guid ReviewerUserId { get; set; }
+    public string ReviewerEmail { get; set; } = string.Empty; 
+    public string SubmissionTitle { get; set; } = string.Empty; 
     public DateTime? DueDate { get; set; }
 }

@@ -48,18 +48,50 @@
                             <tr>
                                 <td class="ps-4">
                                     <div class="fw-bold text-dark">Submission ID: @item.SubmissionId.ToString().Substring(0, 8)...</div>
-                                    <small class="text-muted">Ref: @item.AssignmentId.ToString().Substring(0, 8)</small>
+                                    <small class="text-muted">Assignment Ref: @item.AssignmentId.ToString().Substring(0, 8)</small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill">@item.Status</span>
+                                    @if (item.Status == "Invited")
+                                    {
+                                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">New Invitation</span>
+                                    }
+                                    else if (item.Status == "Accepted")
+                                    {
+                                        <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill">Pending Review</span>
+                                    }
+                                    else if (item.Status == "Submitted")
+                                    {
+                                        <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">Completed</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill">@item.Status</span>
+                                    }
                                 </td>
                                 <td>
                                     <span class="text-danger small fw-bold"><i class="bi bi-clock me-1"></i> @item.DueAt.ToShortDateString()</span>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <button class="btn btn-jarvis btn-sm" @onclick='() => Navigation.NavigateTo($"/submit-review/{item.AssignmentId}")'>
-                                        <i class="bi bi-pencil-square me-1"></i> Start Review
-                                    </button>
+                                    @if (item.Status == "Invited")
+                                    {
+                                        <!-- Davet aşamasındaysa Kabul/Ret sayfasına git -->
+                                        <button class="btn btn-primary btn-sm" @onclick='() => Navigation.NavigateTo($"/review-response/{item.AssignmentId}")'>
+                                            <i class="bi bi-envelope-paper me-1"></i> Respond
+                                        </button>
+                                    }
+                                    else if (item.Status == "Accepted")
+                                    {
+                                        <!-- Kabul edildiyse Değerlendirme sayfasına git -->
+                                        <button class="btn btn-jarvis btn-sm" @onclick='() => Navigation.NavigateTo($"/submit-review/{item.AssignmentId}")'>
+                                            <i class="bi bi-pencil-square me-1"></i> Start Review
+                                        </button>
+                                    }
+                                    else if (item.Status == "Submitted")
+                                    {
+                                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                                            <i class="bi bi-check2-all me-1"></i> Submitted
+                                        </button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -89,6 +121,4 @@
             isLoading = false;
         }
     }
-
-
 }
