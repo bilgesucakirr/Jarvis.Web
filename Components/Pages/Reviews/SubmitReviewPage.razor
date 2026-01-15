@@ -4,6 +4,7 @@
 @using Jarvis.Web.Services
 @inject ReviewsClient ReviewsClient
 @inject SubmissionsClient SubmissionsClient
+@inject VenueApiService VenueService
 @inject NavigationManager Navigation
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
@@ -18,41 +19,73 @@
 
     @if (isLoading)
     {
-        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Loading manuscript and evaluation forms...</p>
+        </div>
     }
     else if (submission == null)
     {
-        <div class="alert alert-danger">Unable to load submission details.</div>
+        <div class="alert alert-danger shadow-sm">
+            <i class="bi bi-exclamation-octagon-fill me-2"></i> Unable to load manuscript details. Please try again later.
+        </div>
     }
     else
     {
-        <!-- MAKALE BİLGİLERİ -->
-        <div class="card mb-4 shadow-sm border-primary">
-            <div class="card-header bg-primary text-white fw-bold">
-                <i class="bi bi-file-earmark-text me-2"></i> Manuscript Information
+        <!-- 1. MAKALE BİLGİLERİ -->
+        <div class="card mb-4 shadow-sm border-0 border-start border-4 border-primary">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-text me-2 text-primary"></i> Manuscript Information</h5>
             </div>
-            <div class="card-body bg-light">
-                <h4 class="fw-bold text-dark">@submission.Title</h4>
-                <div class="mt-3">
-                    <span class="fw-bold text-secondary">Abstract:</span>
-                    <p class="text-muted fst-italic">@submission.Abstract</p>
+            <div class="card-body bg-light bg-opacity-10">
+                <h4 class="fw-bold text-dark mb-3">@submission.Title</h4>
+                <div class="mb-3">
+                    <span class="badge bg-white text-dark border border-secondary border-opacity-25 shadow-sm px-3">@submission.ReferenceNumber</span>
                 </div>
                 <div class="mt-3">
-                    <h6 class="fw-bold">Attachments:</h6>
+                    <h6 class="fw-bold text-secondary small text-uppercase">Abstract:</h6>
+                    <p class="text-muted fst-italic">@submission.Abstract</p>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="fw-bold text-secondary small text-uppercase">Manuscript Files:</h6>
                     @if (submission.Files.Any())
                     {
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2">
                             @foreach (var file in submission.Files)
                             {
-                                <a href="@file.FileUrl" target="_blank" class="btn btn-outline-primary bg-white">
-                                    <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i> Download @file.FileName
+                                <a href="@file.FileUrl" target="_blank" class="btn btn-sm btn-outline-primary bg-white shadow-sm">
+                                    <i class="bi bi-download me-2"></i> Download @file.FileName
                                 </a>
                             }
                         </div>
                     }
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. DİNAMİK FORM İNDİRME ALANI (404 HATASINI ÇÖZEN KISIM) -->
+        <div class="card mb-4 shadow-sm border-0 bg-dark text-white">
+            <div class="card-body p-4 d-flex flex-column flex-md-row align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-file-earmark-word-fill text-info display-6 me-4"></i>
+                    <div>
+                        <h5 class="fw-bold mb-1">Evaluation Form Required</h5>
+                        <p class="mb-0 opacity-75 small">Download the official form for @(venueInfo?.Name ?? "this venue"), fill it, and upload below.</p>
+                    </div>
+                </div>
+                <div class="mt-3 mt-md-0">
+                    @if (venueInfo != null && !string.IsNullOrEmpty(venueInfo.ReviewFormUrl))
+                    {
+                        <a href="@venueInfo.ReviewFormUrl" target="_blank" class="btn btn-info px-4 py-2 fw-bold shadow-sm">
+                            <i class="bi bi-cloud-download me-2"></i> Download Form (.docx)
+                        </a>
+                    }
                     else
                     {
-                        <span class="text-warning">No files attached.</span>
+                        <button class="btn btn-outline-secondary text-white-50" disabled>
+                            <i class="bi bi-exclamation-triangle me-2"></i> No template uploaded by Editor
+                        </button>
                     }
                 </div>
             </div>
@@ -60,81 +93,89 @@
 
         @if (isSuccess)
         {
-            <div class="alert alert-success shadow-sm border-0"><i class="bi bi-check-circle-fill me-2"></i> Evaluation submitted successfully!</div>
-        }
-
-        <!-- 10. Gereksinim: Review Form İndirme -->
-        <div class="alert alert-secondary d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-file-text me-2"></i>
-                <strong>Evaluation Form:</strong> Please download the official review form to fill out.
+            <div class="alert alert-success shadow-sm border-0 animate-fade-in">
+                <i class="bi bi-check-circle-fill me-2"></i> <strong>Success!</strong> Evaluation submitted. Redirecting...
             </div>
-            <a href="/templates/ReviewFormTemplate.docx" class="btn btn-sm btn-dark"><i class="bi bi-download me-1"></i> Download Form (.docx)</a>
-        </div>
+        }
 
         <EditForm Model="@reviewModel" OnValidSubmit="HandleSubmit">
             <DataAnnotationsValidator />
 
             <div class="row g-4">
+                <!-- SCORE & CONFIDENCE -->
                 <div class="col-md-6">
-                    <div class="jarvis-card h-100">
-                        <div class="jarvis-card-body">
-                            <label class="form-label fw-bold">Overall Score (1-5)</label>
-                            <InputNumber @bind-Value="reviewModel.OverallScore" class="form-control form-control-lg text-center" />
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Overall Score (1-5)</label>
+                            <InputNumber @bind-Value="reviewModel.OverallScore" class="form-control form-control-lg text-center fw-bold" />
+                            <div class="d-flex justify-content-between mt-2 small text-muted">
+                                <span>1: Reject</span><span>5: Excellent</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-6">
-                    <div class="jarvis-card h-100">
-                        <div class="jarvis-card-body">
-                            <label class="form-label fw-bold">Your Confidence (1-5)</label>
-                            <InputNumber @bind-Value="reviewModel.Confidence" class="form-control form-control-lg text-center" />
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Reviewer Confidence (1-5)</label>
+                            <InputNumber @bind-Value="reviewModel.Confidence" class="form-control form-control-lg text-center fw-bold" />
+                            <div class="mt-2 small text-muted text-center">Your expertise level in this topic</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 10. Gereksinim: Karar/Öneri Seçimi (Revizyon Tipleri) -->
+                <!-- RECOMMENDATION (Gereksinim 10) -->
                 <div class="col-12">
-                    <div class="jarvis-card">
-                        <div class="jarvis-card-body">
-                            <label class="form-label fw-bold">Recommendation</label>
-                            <InputSelect @bind-Value="reviewModel.CommentsToEditor" class="form-select form-select-lg">
-                                @* Not: SubmitReviewModel'de Recommendation alanı olmadığı için CommentsToEditor geçici olarak kullanılıyor. 
-                                   Gerçek implementasyonda modelde Recommendation alanı olmalıdır. *@
-                                <option value="">-- Select Recommendation --</option>
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Final Recommendation</label>
+                            <InputSelect @bind-Value="reviewModel.Recommendation" class="form-select form-select-lg border-primary">
+                                <option value="">-- Choose Decision --</option>
                                 <option value="Accept">Accept</option>
                                 <option value="MinorRevision">Minor Revision</option>
                                 <option value="MajorRevision">Major Revision</option>
                                 <option value="Reject">Reject</option>
                             </InputSelect>
+                            <ValidationMessage For="@(() => reviewModel.Recommendation)" />
                         </div>
                     </div>
                 </div>
 
+                <!-- COMMENTS -->
                 <div class="col-12">
-                    <div class="jarvis-card">
-                        <div class="jarvis-card-header">Detailed Comments</div>
-                        <div class="jarvis-card-body">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-bottom-0 pt-3">
+                            <h6 class="fw-bold mb-0">Constructive Feedback</h6>
+                        </div>
+                        <div class="card-body">
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Comments to Author</label>
-                                <InputTextArea @bind-Value="reviewModel.CommentsToAuthor" class="form-control" rows="6" placeholder="Provide constructive feedback..." />
+                                <label class="form-label text-muted small">Comments to Author (Visible to Author)</label>
+                                <InputTextArea @bind-Value="reviewModel.CommentsToAuthor" class="form-control" rows="6" placeholder="Provide clear feedback for the authors to improve their work..." />
                                 <ValidationMessage For="@(() => reviewModel.CommentsToAuthor)" />
                             </div>
+                            <div class="mb-0">
+                                <label class="form-label text-muted small">Confidential Comments to Editor (Optional)</label>
+                                <InputTextArea @bind-Value="reviewModel.CommentsToEditor" class="form-control" rows="3" placeholder="These comments will not be shared with authors." />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 1. Gereksinim: Zorunlu .docx Yükleme -->
+                <!-- UPLOAD FILLED FORM (.DOCX ENFORCED) -->
                 <div class="col-12">
-                    <div class="jarvis-card border-warning">
-                        <div class="jarvis-card-body d-flex align-items-center justify-content-between">
+                    <div class="card border-0 shadow-sm border-start border-4 border-warning">
+                        <div class="card-body d-flex flex-column flex-md-row align-items-center justify-content-between p-4">
                             <div>
-                                <label class="form-label fw-bold mb-0">Upload Filled Review Form (.docx)</label>
-                                <div class="small text-muted">Mandatory: Please upload the completed form.</div>
+                                <h6 class="fw-bold mb-1">Upload Filled Evaluation Form (.docx)</h6>
+                                <p class="text-muted small mb-0">Mandatory: Please upload the document you filled out earlier.</p>
                             </div>
-                            <div>
-                                <InputFile OnChange="HandleFileSelected" class="form-control" />
+                            <div class="mt-3 mt-md-0 w-50">
+                                <InputFile OnChange="HandleFileSelected" class="form-control shadow-none" accept=".docx" />
+                                @if (fileError != null)
+                                {
+                                    <div class="text-danger small mt-1">@fileError</div>
+                                }
                             </div>
                         </div>
                     </div>
@@ -142,9 +183,11 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 mb-5">
-                <button type="submit" class="btn btn-jarvis btn-lg" disabled="@isSubmitting">
+                <button type="submit" class="btn btn-primary btn-lg px-5 shadow fw-bold" disabled="@(isSubmitting || submission == null)">
                     @if (isSubmitting)
                     {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                
                         <span>Submitting...</span>
                     }
                     else
@@ -162,7 +205,10 @@
 
     private SubmitReviewModel reviewModel = new();
     private SubmissionDetailModel? submission;
+    private VenueDetailDto? venueInfo;
     private IBrowserFile? selectedFile;
+    private string? fileError;
+
     private bool isLoading = true;
     private bool isSubmitting = false;
     private bool isSuccess = false;
@@ -171,15 +217,24 @@
     {
         try
         {
+            // 1. Assignment bilgisini al
             var assignment = await ReviewsClient.GetAssignmentDetailAsync(AssignmentId);
+
             if (assignment != null)
             {
+                // 2. Makale detaylarını çek
                 submission = await SubmissionsClient.GetSubmissionDetailAsync(assignment.SubmissionId);
+
+                if (submission != null)
+                {
+                    // 3. Konferans detaylarını çek (Dinamik ReviewFormUrl buradan geliyor)
+                    venueInfo = await VenueService.GetVenueDetailsAsync(submission.VenueId);
+                }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Load Error: {ex.Message}");
+            Console.WriteLine($"Review Page Load Error: {ex.Message}");
         }
         finally
         {
@@ -187,10 +242,27 @@
         }
     }
 
-    private void HandleFileSelected(InputFileChangeEventArgs e) => selectedFile = e.File;
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        fileError = null;
+        var file = e.File;
+
+        // .docx Zorunluluğu (Gereksinim 1)
+        if (!file.Name.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+        {
+            fileError = "Invalid file type. Only .docx is allowed.";
+            selectedFile = null;
+            return;
+        }
+
+        selectedFile = file;
+    }
 
     private async Task HandleSubmit()
     {
+        if (selectedFile == null) { fileError = "Please upload the completed evaluation form."; return; }
+        if (string.IsNullOrEmpty(reviewModel.Recommendation)) { return; }
+
         isSubmitting = true;
         try
         {
@@ -202,10 +274,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
-        }
-        finally
-        {
+            Console.WriteLine($"Submit Error: {ex.Message}");
             isSubmitting = false;
         }
     }

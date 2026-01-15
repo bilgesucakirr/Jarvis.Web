@@ -2,55 +2,273 @@
 @attribute [Authorize(Roles = "EditorInChief,Admin")]
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
+@using Jarvis.Web.Components.Shared
 @inject VenueApiService VenueService
+@inject UsersClient UsersClient
 @inject NavigationManager Navigation
 
 @rendermode InteractiveServer
 
-<div class="container py-4">
-    <h3>Create New Venue</h3>
-    <p class="text-muted">Launch a new Conference or Journal.</p>
-
-    <div class="card p-4" style="max-width: 800px;">
-        <EditForm Model="model" OnValidSubmit="HandleCreate">
-            <DataAnnotationsValidator />
-
-            <div class="mb-3">
-                <label class="form-label fw-bold">Venue Name</label>
-                <InputText @bind-Value="model.Name" class="form-control" placeholder="e.g. International Conference on AI" />
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Acronym</label>
-                    <InputText @bind-Value="model.Acronym" class="form-control" placeholder="e.g. ICAI 2026" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Type</label>
-                    <InputSelect @bind-Value="model.Type" class="form-select">
-                        <option value="Conference">Conference</option>
-                        <option value="Journal">Journal</option>
-                    </InputSelect>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label fw-bold">Description</label>
-                <InputTextArea @bind-Value="model.Description" class="form-control" rows="4" />
-            </div>
-
-            <button type="submit" class="btn btn-primary px-4">Create Venue</button>
-            <button type="button" class="btn btn-link text-secondary" @onclick='() => Navigation.NavigateTo("/dashboard")'>Cancel</button>
-        </EditForm>
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Create New Venue</h2>
+            <p class="text-muted mb-0">Launch a new Conference or Journal workspace.</p>
+        </div>
+        <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/dashboard")'>Cancel</button>
     </div>
+
+    <!-- HATA MESAJI (GENEL) -->
+    @if (!string.IsNullOrEmpty(generalError))
+    {
+        <div class="alert alert-danger mb-4 shadow-sm border-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @generalError
+        </div>
+    }
+
+    <EditForm Model="model" OnValidSubmit="HandleCreate">
+        <DataAnnotationsValidator />
+
+        <div class="row g-4">
+            <!-- SOL KOLON -->
+            <div class="col-lg-8">
+                <!-- KART 1: Genel Bilgiler -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3 border-bottom-0">
+                        <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-info-circle me-2"></i>General Information</h5>
+                    </div>
+                    <div class="card-body p-4 pt-0">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Venue Name</label>
+                            <InputText @bind-Value="model.Name" class="form-control form-control-lg" placeholder="e.g. International Conference on AI" />
+                            <ValidationMessage For="@(() => model.Name)" />
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Acronym</label>
+                                <InputText @bind-Value="model.Acronym" class="form-control" placeholder="e.g. ICAI 2026" />
+                                <ValidationMessage For="@(() => model.Acronym)" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Type</label>
+                                <InputSelect @bind-Value="model.Type" class="form-select">
+                                    <option value="Conference">Conference</option>
+                                    <option value="Journal">Journal</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Organizer Email</label>
+                            <InputText @bind-Value="model.OrganizerEmail" class="form-control" placeholder="contact@conference.org" />
+                            <ValidationMessage For="@(() => model.OrganizerEmail)" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KART 2: İçerik & Ayarlar -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3 border-bottom-0">
+                        <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-file-earmark-text me-2"></i>Content & Settings</h5>
+                    </div>
+                    <div class="card-body p-4 pt-0">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Aim & Scope</label>
+                            <InputTextArea @bind-Value="model.AimAndScope" class="form-control" rows="5" placeholder="Describe the topics and goals..." />
+                            <ValidationMessage For="@(() => model.AimAndScope)" />
+                        </div>
+
+                        <!-- InterestSelector (Chip Selector) -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Keywords (Topics)</label>
+
+                            @if (availableInterests != null && availableInterests.Any())
+                            {
+                                <InterestSelector AllInterests="@availableInterests"
+                                                  SelectedInterests="@selectedKeywords"
+                                                  SelectedInterestsChanged="@OnKeywordsChanged" />
+                            }
+                            else
+                            {
+                                <div class="text-center p-2 bg-light rounded text-muted small">
+                                    <span class="spinner-border spinner-border-sm me-2"></span> Loading topics...
+                                </div>
+                            }
+
+                            <div class="form-text mt-2">Select standardized topics for automatic reviewer matching.</div>
+                            <ValidationMessage For="@(() => model.Keywords)" />
+                        </div>
+
+                        <!-- Review Form Upload -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Review Form Template (.docx)</label>
+                            <div class="input-group">
+                                <InputFile class="form-control" OnChange="HandleReviewFormUpload" accept=".docx" />
+                                <span class="input-group-text bg-light"><i class="bi bi-file-word text-primary"></i></span>
+                            </div>
+                            <small class="text-muted">Reviewers will download this form to evaluate papers.</small>
+
+                            <!-- Başarılı Mesajı -->
+                            @if (!string.IsNullOrEmpty(model.ReviewFormUrl))
+                            {
+                                <div class="alert alert-success d-flex align-items-center mt-2 py-2 px-3 small">
+                                    <i class="bi bi-check-circle-fill me-2"></i> File uploaded successfully.
+                                </div>
+                            }
+
+                            <!-- Dosya Yükleme Hatası Mesajı (YENİ) -->
+                            @if (!string.IsNullOrEmpty(uploadError))
+                            {
+                                <div class="alert alert-danger d-flex align-items-center mt-2 py-2 px-3 small">
+                                    <i class="bi bi-x-circle-fill me-2"></i> @uploadError
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SAĞ KOLON: TRACKS -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white py-3 border-bottom-0">
+                        <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-list-task me-2"></i>Tracks</h5>
+                    </div>
+                    <div class="card-body p-4 pt-0">
+                        <p class="small text-muted mb-3">Define submission tracks (e.g. "Main Track", "Student Session").</p>
+
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="New Track Name" @bind="newTrackName" />
+                            <button type="button" class="btn btn-outline-primary" @onclick="AddTrack">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+
+                        <ul class="list-group list-group-flush border rounded mb-0">
+                            @if (model.Tracks.Any())
+                            {
+                                @foreach (var track in model.Tracks)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                        <span class="fw-medium">@track</span>
+                                        @if (track != "General Track")
+                                        {
+                                            <button type="button" class="btn btn-sm text-danger p-0 border-0" @onclick="() => RemoveTrack(track)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                    </li>
+                                }
+                            }
+                            else
+                            {
+                                <li class="list-group-item text-center text-muted small py-3">No tracks added.</li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="card-footer bg-white p-3 border-top-0">
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">
+                            <i class="bi bi-check-circle me-2"></i> Create Venue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
 </div>
 
 @code {
     private CreateVenueModel model = new();
+    private string newTrackName = "";
+    private List<AreaOfInterestDto> availableInterests = new();
+    private List<string> selectedKeywords = new();
+
+    // Hata Yönetimi İçin Değişkenler
+    private string uploadError = "";
+    private string generalError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            availableInterests = await UsersClient.GetInterestsAsync();
+        }
+        catch (Exception ex)
+        {
+            // Kullanıcıya hissettirmeden logla veya genel hata göster
+            Console.WriteLine($"Error loading interests: {ex.Message}");
+        }
+    }
+
+    private void AddTrack()
+    {
+        if (!string.IsNullOrWhiteSpace(newTrackName) && !model.Tracks.Contains(newTrackName))
+        {
+            model.Tracks.Add(newTrackName);
+            newTrackName = "";
+        }
+    }
+
+    private void RemoveTrack(string trackName)
+    {
+        model.Tracks.Remove(trackName);
+    }
+
+    private void OnKeywordsChanged(List<string> newList)
+    {
+        selectedKeywords = newList;
+        model.Keywords = string.Join(",", selectedKeywords);
+    }
+
+    private async Task HandleReviewFormUpload(InputFileChangeEventArgs e)
+    {
+        uploadError = ""; // Önceki hatayı temizle
+        model.ReviewFormUrl = null;
+
+        try
+        {
+            // UI Tarafı Ön Kontrolü
+            if (!e.File.Name.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                uploadError = "Only .docx files are allowed! Please upload a valid Word document.";
+                return;
+            }
+
+            if (e.File.Size > 2 * 1024 * 1024) // 2MB
+            {
+                uploadError = "File size must be less than 2MB.";
+                return;
+            }
+
+            var url = await VenueService.UploadReviewFormAsync(e.File);
+            model.ReviewFormUrl = url;
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Upload failed: {ex.Message}";
+        }
+    }
 
     private async Task HandleCreate()
     {
-        await VenueService.CreateVenueAsync(model);
-        Navigation.NavigateTo("/dashboard");
+        generalError = ""; // Temizle
+
+        // Custom Validation: Dosya yüklendi mi?
+        if (string.IsNullOrEmpty(model.ReviewFormUrl))
+        {
+            uploadError = "Review form is required. Please upload a .docx file.";
+            return;
+        }
+
+        try
+        {
+            await VenueService.CreateVenueAsync(model);
+            Navigation.NavigateTo("/dashboard");
+        }
+        catch (Exception ex)
+        {
+            generalError = $"Could not create venue: {ex.Message}";
+        }
     }
 }

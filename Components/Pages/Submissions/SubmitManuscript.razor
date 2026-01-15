@@ -3,8 +3,10 @@
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
 @using System.Security.Claims
+@using Jarvis.Web.Components.Shared
 @inject SubmissionsClient SubmissionsClient
 @inject VenueApiService VenueService
+@inject UsersClient UsersClient
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -13,99 +15,109 @@
 <div class="container py-4">
     <div class="mb-4">
         <h2 class="fw-bold text-dark">Submit to @venueName</h2>
-        <p class="text-muted small">Please fill in all required academic metadata.</p>
+        <p class="text-muted small">Fill in the academic metadata. Fields marked with * are mandatory.</p>
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="alert alert-danger shadow-sm">@errorMessage</div>
+        <div class="alert alert-danger shadow-sm border-0 border-start border-4 border-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+        </div>
     }
 
     @if (isLoading)
     {
-        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+        <div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Preparing submission form...</p></div>
     }
     else
     {
         <EditForm Model="@model" OnValidSubmit="HandleSubmit">
             <DataAnnotationsValidator />
 
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-white fw-bold"><i class="bi bi-info-circle me-2"></i> General Information</div>
-                <div class="card-body">
+            <!-- CARD 1: GENERAL INFO -->
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-header bg-white py-3"><h5 class="fw-bold mb-0 text-primary"><i class="bi bi-info-circle me-2"></i>General Information</h5></div>
+                <div class="card-body p-4">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Select Track</label>
+                            <label class="form-label fw-bold small text-uppercase">Target Track *</label>
                             <select class="form-select" @bind="model.TrackId">
-                                <option value="">-- Choose Target Track --</option>
+                                <option value="">-- Select Track --</option>
                                 @foreach (var track in availableTracks)
                                 {
                                     <option value="@track.Id">@track.Name</option>
                                 }
                             </select>
+                            <ValidationMessage For="@(() => model.TrackId)" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Manuscript Type</label>
+                            <label class="form-label fw-bold small text-uppercase">Manuscript Type *</label>
                             <select class="form-select" @bind="model.Type">
                                 <option value="0">Research Paper</option>
                                 <option value="1">Review Paper</option>
                                 <option value="2">Case Study</option>
+                                <option value="3">Abstract Paper</option>
                             </select>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Title</label>
-                            <InputText @bind-Value="model.Title" class="form-control" placeholder="Full title of your paper" />
+                            <label class="form-label fw-bold small text-uppercase">Full Title *</label>
+                            <InputText @bind-Value="model.Title" class="form-control" placeholder="Enter the full title of your manuscript" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Abstract</label>
-                            <InputTextArea @bind-Value="model.Abstract" class="form-control" rows="4" />
+                            <label class="form-label fw-bold small text-uppercase">Abstract *</label>
+                            <InputTextArea @bind-Value="model.Abstract" class="form-control" rows="5" placeholder="Summary of your work..." />
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Keywords</label>
-                            <InputText @bind-Value="model.Keywords" class="form-control" placeholder="e.g. AI, Microservices, Security" />
+                            <label class="form-label fw-bold small text-uppercase">Keywords *</label>
+                            <InterestSelector AllInterests="@availableInterests"
+                                              SelectedInterests="@selectedKeywords"
+                                              SelectedInterestsChanged="OnKeywordsChanged" />
+                            <small class="text-muted">Standardized topics help in finding the right reviewers.</small>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-people me-2"></i> Authors</span>
-                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddAuthor">+ Add Author</button>
+            <!-- CARD 2: AUTHORS (AUTO-FILLED) -->
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-people me-2"></i>Authors Information</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddAuthor"><i class="bi bi-plus-lg me-1"></i>Add Co-Author</button>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     @foreach (var author in model.Authors)
                     {
-                        <div class="row g-2 mb-3 pb-3 border-bottom">
+                        <div class="row g-2 mb-3 pb-3 border-bottom position-relative">
                             <div class="col-md-3">
-                                <label class="small text-muted">First Name</label>
+                                <label class="small text-muted fw-bold">First Name</label>
                                 <input class="form-control form-control-sm" @bind="author.FirstName" />
                             </div>
                             <div class="col-md-3">
-                                <label class="small text-muted">Last Name</label>
+                                <label class="small text-muted fw-bold">Last Name</label>
                                 <input class="form-control form-control-sm" @bind="author.LastName" />
                             </div>
                             <div class="col-md-4">
-                                <label class="small text-muted">Email</label>
+                                <label class="small text-muted fw-bold">Email Address</label>
                                 <input class="form-control form-control-sm" @bind="author.Email" />
                             </div>
                             <div class="col-md-2 text-end pt-4">
-                                <button type="button" class="btn btn-sm btn-link text-danger" @onclick="() => model.Authors.Remove(author)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                @if (model.Authors.Count > 1)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0" @onclick="() => model.Authors.Remove(author)"><i class="bi bi-trash"></i></button>
+                                }
                             </div>
                             <div class="col-md-5">
-                                <label class="small text-muted">Affiliation (University/Company)</label>
+                                <label class="small text-muted fw-bold">Affiliation</label>
                                 <input class="form-control form-control-sm" @bind="author.Affiliation" />
                             </div>
                             <div class="col-md-4">
-                                <label class="small text-muted">Country</label>
+                                <label class="small text-muted fw-bold">Country</label>
                                 <input class="form-control form-control-sm" @bind="author.Country" />
                             </div>
                             <div class="col-md-3 pt-4">
                                 <div class="form-check pt-1">
                                     <input class="form-check-input" type="checkbox" @bind="author.IsCorresponding" id="@($"corr-{author.GetHashCode()}")" />
-                                    <label class="form-check-label small" for="@($"corr-{author.GetHashCode()}")">Corresponding Author</label>
+                                    <label class="form-check-label small fw-bold" for="@($"corr-{author.GetHashCode()}")">Corresponding</label>
                                 </div>
                             </div>
                         </div>
@@ -113,41 +125,49 @@
                 </div>
             </div>
 
-            <div class="card mb-4 shadow-sm border-warning">
-                <div class="card-header bg-warning-subtle fw-bold"><i class="bi bi-shield-check me-2"></i> Declarations</div>
-                <div class="card-body">
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" @bind="model.IsOriginal" id="orig" />
-                        <label class="form-check-label" for="orig">I confirm this is an original work.</label>
+            <!-- CARD 3: FILE UPLOAD (.DOCX ENFORCED) -->
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-header bg-white py-3"><h5 class="fw-bold mb-0 text-primary"><i class="bi bi-file-earmark-word me-2"></i>Manuscript File</h5></div>
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold">Upload Document (Word .docx Only) *</label>
+                    <div class="input-group">
+                        <InputFile OnChange="HandleFileSelected" class="form-control" accept=".docx" />
+                        <span class="input-group-text bg-light text-primary"><i class="bi bi-filetype-docx fs-4"></i></span>
                     </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" @bind="model.IsNotElsewhere" id="else" />
-                        <label class="form-check-label" for="else">This manuscript is not under review elsewhere.</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" @bind="model.HasConsent" id="cons" />
-                        <label class="form-check-label" for="cons">I have consent from all co-authors.</label>
-                    </div>
+                    <div class="mt-2 small text-muted"><i class="bi bi-info-circle me-1"></i> System policy: To ensure a smooth review process, only <b>.docx</b> files are accepted.</div>
                 </div>
             </div>
 
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-white fw-bold"><i class="bi bi-file-earmark-arrow-up me-2"></i> Files</div>
-                <div class="card-body">
-                    <label class="form-label fw-semibold">Main Manuscript (PDF)</label>
-                    <InputFile OnChange="HandleFileSelected" class="form-control mb-3" />
+            <!-- CARD 4: DECLARATIONS -->
+            <div class="card mb-5 shadow-sm border-warning border-opacity-50">
+                <div class="card-header bg-warning bg-opacity-10 py-3"><h5 class="fw-bold mb-0 text-dark"><i class="bi bi-shield-check me-2"></i>Final Declarations</h5></div>
+                <div class="card-body p-4">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" @bind="model.IsOriginal" id="orig" />
+                        <label class="form-check-label fw-medium" for="orig">I confirm this is an original work and has not been published elsewhere.</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" @bind="model.IsNotElsewhere" id="else" />
+                        <label class="form-check-label fw-medium" for="else">This manuscript is not currently under review by another journal or conference.</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="model.HasConsent" id="cons" />
+                        <label class="form-check-label fw-medium" for="cons">I have obtained consent from all listed co-authors for this submission.</label>
+                    </div>
                 </div>
             </div>
 
             <div class="text-end mb-5">
-                <button type="submit" class="btn btn-primary btn-lg px-5" disabled="@isSubmitting">
+                <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm fw-bold" disabled="@isSubmitting">
                     @if (isSubmitting)
                     {
-                        <span class="spinner-border spinner-border-sm"></span>
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                
+                        <span>Processing...</span>
                     }
                     else
                     {
-                        <span>Finalize Submission</span>
+                        <span><i class="bi bi-send-fill me-2"></i>Finalize Submission</span>
                     }
                 </button>
             </div>
@@ -157,8 +177,11 @@
 
 @code {
     [Parameter] public Guid VenueId { get; set; }
-    private SubmissionModel model = new() { Authors = new() { new AuthorModel { IsCorresponding = true } } };
+    private SubmissionModel model = new() { Authors = new() };
     private List<TrackDto> availableTracks = new();
+    private List<AreaOfInterestDto> availableInterests = new();
+    private List<string> selectedKeywords = new();
+
     private string venueName = "";
     private bool isLoading = true;
     private bool isSubmitting = false;
@@ -170,46 +193,98 @@
     {
         try
         {
+            // 9. MADDE: Profil bilgilerini çek ve ilk yazar olarak ata
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
 
-            if (user.Identity is { IsAuthenticated: true })
+            if (user.Identity?.IsAuthenticated == true)
             {
-                model.SubmitterEmail = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email")?.Value ?? "";
-                model.SubmitterName = user.Identity.Name
-                                      ?? user.Claims.FirstOrDefault(c => c.Type == "name" || c.Type == "unique_name")?.Value
-                                      ?? "Academic User";
-
                 currentUserId = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "sub")?.Value ?? "";
+
+                // Profil servisinden detayları al
+                var userProfile = await UsersClient.GetProfileAsync();
+
+                if (userProfile != null)
+                {
+                    var nameParts = userProfile.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    var firstAuthor = new AuthorModel
+                    {
+                        FirstName = nameParts.Length > 0 ? nameParts[0] : "",
+                        LastName = nameParts.Length > 1 ? string.Join(" ", nameParts.Skip(1)) : "",
+                        Email = userProfile.Email,
+                        Affiliation = userProfile.Affiliation ?? "",
+                        Country = userProfile.Country ?? "",
+                        IsCorresponding = true
+                    };
+
+                    model.Authors.Add(firstAuthor);
+                    model.SubmitterEmail = userProfile.Email;
+                    model.SubmitterName = userProfile.FullName;
+                }
             }
 
-            var details = await VenueService.GetVenueDetailsAsync(VenueId);
+            // Paralel Veri Çekimi (Venue Detayları + Keywords Listesi)
+            var detailsTask = VenueService.GetVenueDetailsAsync(VenueId);
+            var interestsTask = UsersClient.GetInterestsAsync();
+            await Task.WhenAll(detailsTask, interestsTask);
+
+            var details = detailsTask.Result;
+            availableInterests = interestsTask.Result;
+
             if (details != null)
             {
                 venueName = details.Name;
                 model.VenueId = VenueId;
+                model.OrganizerEmail = details.OrganizerEmail; 
                 model.VenueEditionId = details.ActiveEditionId;
                 model.CallForPapersId = details.ActiveCfpId;
                 availableTracks = details.Tracks;
             }
         }
-        catch { errorMessage = "Error loading venue details."; }
+        catch (Exception ex)
+        {
+            errorMessage = $"Initialization failed: {ex.Message}";
+        }
         finally { isLoading = false; }
     }
 
+    private void OnKeywordsChanged(List<string> newList)
+    {
+        selectedKeywords = newList;
+        model.Keywords = string.Join(",", selectedKeywords);
+    }
+
     private void AddAuthor() => model.Authors.Add(new AuthorModel());
-    private void HandleFileSelected(InputFileChangeEventArgs e) => selectedFile = e.File;
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        var file = e.File;
+
+        // Uzantı Kontrolü
+        if (!file.Name.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Invalid file format. Only Microsoft Word (.docx) documents are allowed.";
+            selectedFile = null;
+            return;
+        }
+        selectedFile = file;
+    }
 
     private async Task HandleSubmit()
     {
-        if (selectedFile == null) { errorMessage = "Manuscript file is required."; return; }
-        if (!model.IsOriginal || !model.IsNotElsewhere || !model.HasConsent) { errorMessage = "All declarations must be accepted."; return; }
+        if (selectedFile == null) { errorMessage = "Manuscript file (.docx) is required."; return; }
+        if (string.IsNullOrEmpty(model.Keywords)) { errorMessage = "Please select relevant keywords for your work."; return; }
+        if (model.TrackId == Guid.Empty) { errorMessage = "Please select a target track for submission."; return; }
+        if (!model.IsOriginal || !model.HasConsent || !model.IsNotElsewhere) { errorMessage = "You must accept all declarations to continue."; return; }
 
         isSubmitting = true;
         try
         {
+            // API'ye gönder ve organizatöre mail tetikle
             var id = await SubmissionsClient.SubmitAsync(model, selectedFile);
             await SubmissionsClient.FinalizeAsync(id, currentUserId);
+
             Navigation.NavigateTo("/dashboard");
         }
         catch (Exception ex)

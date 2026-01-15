@@ -13,5 +13,6 @@ public class ReviewAssignmentDetailDto
 {
     public Guid AssignmentId { get; set; }
     public Guid SubmissionId { get; set; }
+    public Guid VenueId { get; set; }
     public string Status { get; set; } = string.Empty;
 }

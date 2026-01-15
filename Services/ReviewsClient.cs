@@ -27,7 +27,7 @@ public class ReviewsClient
         }
     }
 
-    public async Task SubmitReviewAsync(Guid assignmentId, SubmitReviewModel model, IBrowserFile? file)
+    public async Task SubmitReviewAsync(Guid assignmentId, SubmitReviewModel model, IBrowserFile file)
     {
         await AddAuthHeader();
 
@@ -35,14 +35,23 @@ public class ReviewsClient
         content.Add(new StringContent(model.OverallScore.ToString()), "OverallScore");
         content.Add(new StringContent(model.Confidence.ToString()), "Confidence");
         content.Add(new StringContent(model.CommentsToAuthor), "CommentsToAuthor");
+        content.Add(new StringContent(model.Recommendation), "Recommendation"); // YENİ
 
         if (model.CommentsToEditor is not null)
             content.Add(new StringContent(model.CommentsToEditor), "CommentsToEditor");
 
-        var response = await _httpClient.PostAsync($"api/Reviews/{assignmentId}/submit", content);
-        response.EnsureSuccessStatusCode();
-    }
+        var fileContent = new StreamContent(file.OpenReadStream(1024 * 1024 * 5));
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        content.Add(fileContent, "ReviewFile", file.Name);
 
+        var response = await _httpClient.PostAsync($"api/Reviews/{assignmentId}/submit", content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Submission failed: {error}");
+        }
+    }
     public async Task<List<ReviewAssignmentModel>> GetMyAssignmentsAsync()
     {
         await AddAuthHeader(); 
