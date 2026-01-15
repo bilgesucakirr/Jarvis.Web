@@ -26,19 +26,17 @@
     }
     else
     {
-        <!-- 1. MAKALE BİLGİLERİ VE DOSYA İNDİRME (YENİ EKLENEN KISIM) -->
+        <!-- MAKALE BİLGİLERİ -->
         <div class="card mb-4 shadow-sm border-primary">
             <div class="card-header bg-primary text-white fw-bold">
                 <i class="bi bi-file-earmark-text me-2"></i> Manuscript Information
             </div>
             <div class="card-body bg-light">
                 <h4 class="fw-bold text-dark">@submission.Title</h4>
-
                 <div class="mt-3">
                     <span class="fw-bold text-secondary">Abstract:</span>
                     <p class="text-muted fst-italic">@submission.Abstract</p>
                 </div>
-
                 <div class="mt-3">
                     <h6 class="fw-bold">Attachments:</h6>
                     @if (submission.Files.Any())
@@ -60,19 +58,18 @@
             </div>
         </div>
 
-        <!-- 2. PUANLAMA FORMU (MEVCUT KISIM) -->
         @if (isSuccess)
         {
             <div class="alert alert-success shadow-sm border-0"><i class="bi bi-check-circle-fill me-2"></i> Evaluation submitted successfully!</div>
         }
 
-        <div class="jarvis-card mb-4 border-warning">
-            <div class="jarvis-card-header bg-warning bg-opacity-10">
-                <h3 class="text-dark fs-5"><i class="bi bi-shield-lock me-2"></i> Blind Review Protocol</h3>
+        <!-- 10. Gereksinim: Review Form İndirme -->
+        <div class="alert alert-secondary d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-file-text me-2"></i>
+                <strong>Evaluation Form:</strong> Please download the official review form to fill out.
             </div>
-            <div class="jarvis-card-body py-3">
-                <p class="mb-0 small">Author identities are hidden. Please focus strictly on the scientific merit.</p>
-            </div>
+            <a href="/templates/ReviewFormTemplate.docx" class="btn btn-sm btn-dark"><i class="bi bi-download me-1"></i> Download Form (.docx)</a>
         </div>
 
         <EditForm Model="@reviewModel" OnValidSubmit="HandleSubmit">
@@ -84,9 +81,6 @@
                         <div class="jarvis-card-body">
                             <label class="form-label fw-bold">Overall Score (1-5)</label>
                             <InputNumber @bind-Value="reviewModel.OverallScore" class="form-control form-control-lg text-center" />
-                            <div class="mt-2 small text-muted d-flex justify-content-between">
-                                <span>1: Reject</span><span>5: Excellent</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -96,7 +90,24 @@
                         <div class="jarvis-card-body">
                             <label class="form-label fw-bold">Your Confidence (1-5)</label>
                             <InputNumber @bind-Value="reviewModel.Confidence" class="form-control form-control-lg text-center" />
-                            <div class="mt-2 small text-muted text-center">How expert are you in this field?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 10. Gereksinim: Karar/Öneri Seçimi (Revizyon Tipleri) -->
+                <div class="col-12">
+                    <div class="jarvis-card">
+                        <div class="jarvis-card-body">
+                            <label class="form-label fw-bold">Recommendation</label>
+                            <InputSelect @bind-Value="reviewModel.CommentsToEditor" class="form-select form-select-lg">
+                                @* Not: SubmitReviewModel'de Recommendation alanı olmadığı için CommentsToEditor geçici olarak kullanılıyor. 
+                                   Gerçek implementasyonda modelde Recommendation alanı olmalıdır. *@
+                                <option value="">-- Select Recommendation --</option>
+                                <option value="Accept">Accept</option>
+                                <option value="MinorRevision">Minor Revision</option>
+                                <option value="MajorRevision">Major Revision</option>
+                                <option value="Reject">Reject</option>
+                            </InputSelect>
                         </div>
                     </div>
                 </div>
@@ -110,21 +121,17 @@
                                 <InputTextArea @bind-Value="reviewModel.CommentsToAuthor" class="form-control" rows="6" placeholder="Provide constructive feedback..." />
                                 <ValidationMessage For="@(() => reviewModel.CommentsToAuthor)" />
                             </div>
-                            <div class="mb-0">
-                                <label class="form-label fw-bold">Confidential Comments to Editor</label>
-                                <InputTextArea @bind-Value="reviewModel.CommentsToEditor" class="form-control" rows="3" placeholder="Will not be visible to the author." />
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Hakem kendi notlu dosyasını yüklemek isterse -->
+                <!-- 1. Gereksinim: Zorunlu .docx Yükleme -->
                 <div class="col-12">
-                    <div class="jarvis-card">
+                    <div class="jarvis-card border-warning">
                         <div class="jarvis-card-body d-flex align-items-center justify-content-between">
                             <div>
-                                <label class="form-label fw-bold mb-0">Upload Annotated Manuscript (Optional)</label>
-                                <div class="small text-muted">Upload PDF with your inline comments</div>
+                                <label class="form-label fw-bold mb-0">Upload Filled Review Form (.docx)</label>
+                                <div class="small text-muted">Mandatory: Please upload the completed form.</div>
                             </div>
                             <div>
                                 <InputFile OnChange="HandleFileSelected" class="form-control" />
@@ -154,7 +161,7 @@
     [Parameter] public Guid AssignmentId { get; set; }
 
     private SubmitReviewModel reviewModel = new();
-    private SubmissionDetailModel? submission; // Makale detaylarını tutacak
+    private SubmissionDetailModel? submission;
     private IBrowserFile? selectedFile;
     private bool isLoading = true;
     private bool isSubmitting = false;
@@ -164,12 +171,9 @@
     {
         try
         {
-            // 1. Assignment detayını çek (SubmissionId'yi öğrenmek için)
             var assignment = await ReviewsClient.GetAssignmentDetailAsync(AssignmentId);
-
             if (assignment != null)
             {
-                // 2. Submission detayını çek (Dosyaları ve Özeti görmek için)
                 submission = await SubmissionsClient.GetSubmissionDetailAsync(assignment.SubmissionId);
             }
         }

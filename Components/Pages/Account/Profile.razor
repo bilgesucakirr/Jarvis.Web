@@ -2,85 +2,152 @@
 @attribute [Authorize]
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
+@using Jarvis.Web.Components.Shared
 @inject UsersClient UsersClient
 
-@* Eğer App.razor içinde global render mode varsa aşağıdaki satırı silebilirsin, yoksa kalsın *@
 @rendermode InteractiveServer
 
-<div class="container py-4">
-    <h2 class="fw-bold mb-4">My Profile</h2>
-
-    @if (isLoading)
-    {
-        <div class="text-center p-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Loading profile...</p>
-        </div>
-    }
-    else if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger">
-            <h4 class="alert-heading">Error Loading Profile</h4>
-            <p>@errorMessage</p>
-            <hr>
-            <p class="mb-0">Please try refreshing the page or logging in again.</p>
-        </div>
-    }
-    else
-    {
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card text-center p-4 shadow-sm border-0">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto"
-                         style="width: 80px; height: 80px; font-size: 2rem;">
-                        @(profile?.FullName?.FirstOrDefault().ToString().ToUpper() ?? "?")
-                    </div>
-                    <h4>@profile?.FullName</h4>
-                    <p class="text-muted">@profile?.Email</p>
-                    <div class="mt-3">
-                        @if (profile?.Roles != null)
+<div class="container py-5">
+    <div class="row g-4">
+        <!-- SOL PANEL: Profil Kartı -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm text-center h-100">
+                <div class="card-body p-4">
+                    <div class="position-relative d-inline-block mb-3">
+                        @if (!string.IsNullOrEmpty(profile?.ProfilePictureUrl))
                         {
-                            @foreach (var role in profile.Roles)
-                            {
-                                <span class="badge bg-secondary me-1">@role</span>
-                            }
+                            <img src="@profile.ProfilePictureUrl" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto text-secondary fw-bold border"
+                                 style="width: 150px; height: 150px; font-size: 3rem;">
+                                @(profile?.FullName?.FirstOrDefault().ToString().ToUpper() ?? "?")
+                            </div>
+                        }
+                        <label class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle shadow" style="width:40px; height:40px; padding-top:8px;">
+                            <i class="bi bi-camera-fill"></i>
+                            <InputFile OnChange="HandleProfilePictureSelected" style="display:none;" accept=".jpg,.jpeg,.png" />
+                        </label>
+                    </div>
+
+                    <h4 class="fw-bold mb-1">@profile?.FullName</h4>
+                    <p class="text-muted mb-3">@profile?.Title</p>
+
+                    <div class="d-flex justify-content-center gap-2 mb-4">
+                        @foreach (var role in profile?.Roles ?? new List<string>())
+                        {
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">@role</span>
+                        }
+                    </div>
+
+                    <div class="text-start px-3">
+                        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Contact</small>
+                        <div class="d-flex align-items-center mt-2">
+                            <i class="bi bi-envelope text-primary me-3"></i>
+                            <span>@profile?.Email</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(profile?.Affiliation))
+                        {
+                            <div class="d-flex align-items-center mt-3">
+                                <i class="bi bi-building text-primary me-3"></i>
+                                <span>@profile.Affiliation</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(profile?.Country))
+                        {
+                            <div class="d-flex align-items-center mt-3">
+                                <i class="bi bi-geo-alt text-primary me-3"></i>
+                                <span>@profile.Country</span>
+                            </div>
                         }
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-md-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white fw-bold">Edit Information</div>
-                    <div class="card-body">
-                        @if (isSaved)
-                        {
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                Profile updated successfully!
-                                <button type="button" class="btn-close" @onclick="() => isSaved = false"></button>
-                            </div>
-                        }
+        <!-- SAĞ PANEL: Ayarlar (Tabs) -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-bottom-0 pt-4 px-4">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "details" ? "active fw-bold" : "text-muted")"
+                               href="javascript:void(0)" @onclick='() => activeTab = "details"'>
+                                <i class="bi bi-person-lines-fill me-2"></i>Personal Details
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "security" ? "active fw-bold" : "text-muted")"
+                               href="javascript:void(0)" @onclick='() => activeTab = "security"'>
+                                <i class="bi bi-shield-lock me-2"></i>Security
+                            </a>
+                        </li>
+                    </ul>
+                </div>
 
-                        @if (!string.IsNullOrEmpty(saveErrorMessage))
-                        {
-                            <div class="alert alert-danger">@saveErrorMessage</div>
-                        }
+                <div class="card-body p-4">
+                    <!-- MESAJLAR -->
+                    @if (isSaved)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show">
+                            <i class="bi bi-check-circle me-2"></i> Changes saved successfully.
+                            <button type="button" class="btn-close" @onclick="() => isSaved = false"></button>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> @errorMessage</div>
+                    }
 
+                    <!-- TAB 1: KİŞİSEL BİLGİLER -->
+                    @if (activeTab == "details")
+                    {
                         <EditForm Model="updateModel" OnValidSubmit="HandleSave">
                             <DataAnnotationsValidator />
 
-                            <div class="mb-3">
-                                <label class="form-label">Full Name</label>
-                                <InputText @bind-Value="updateModel.FullName" class="form-control" />
+                            <div class="row g-3">
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small">Title</label>
+                                    <InputSelect @bind-Value="updateModel.Title" class="form-select">
+                                        <option value="">-</option>
+                                        <option value="Dr.">Dr.</option>
+                                        <option value="Prof.">Prof.</option>
+                                        <option value="Assoc. Prof.">Assoc. Prof.</option>
+                                        <option value="Asst. Prof.">Asst. Prof.</option>
+                                        <option value="Mr.">Mr.</option>
+                                        <option value="Ms.">Ms.</option>
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-10">
+                                    <label class="form-label text-muted small">Full Name</label>
+                                    <InputText @bind-Value="updateModel.FullName" class="form-control" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">Affiliation (University/Institution)</label>
+                                    <InputText @bind-Value="updateModel.Affiliation" class="form-control" placeholder="e.g. Isik University" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">Country</label>
+                                    <InputText @bind-Value="updateModel.Country" class="form-control" placeholder="e.g. Turkey" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label text-muted small">Short Biography</label>
+                                    <InputTextArea @bind-Value="updateModel.Biography" class="form-control" rows="3" placeholder="Briefly describe your academic background..." />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label text-muted small">Areas of Interest / Expertise</label>
+                                    <!-- YENİ MODERN COMPONENT -->
+                                    <InterestSelector AllInterests="@availableInterests"
+                                                      SelectedInterests="@selectedInterestsList"
+                                                      SelectedInterestsChanged="@OnInterestsChanged" />
+                                </div>
                             </div>
 
-                            <div class="mb-4">
-                                <label class="form-label">Interests / Expertise</label>
-                                <InputTextArea @bind-Value="updateModel.Interests" class="form-control" rows="4" placeholder="Keywords regarding your academic expertise..." />
-                                <div class="form-text">Used to match you with relevant submissions.</div>
-                            </div>
-
-                            <div class="text-end">
+                            <div class="mt-4 text-end">
                                 <button type="submit" class="btn btn-primary px-4" disabled="@isSaving">
                                     @if (isSaving)
                                     {
@@ -90,57 +157,124 @@
                                 </button>
                             </div>
                         </EditForm>
-                    </div>
+                    }
+
+                    <!-- TAB 2: GÜVENLİK (ŞİFRE DEĞİŞTİRME) -->
+                    @if (activeTab == "security")
+                    {
+                        <EditForm Model="passwordModel" OnValidSubmit="HandlePasswordChange">
+                            <DataAnnotationsValidator />
+
+                            <div class="mb-3">
+                                <label class="form-label">Current Password</label>
+                                <InputText @bind-Value="passwordModel.CurrentPassword" type="password" class="form-control" />
+                                <ValidationMessage For="@(() => passwordModel.CurrentPassword)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">New Password</label>
+                                <InputText @bind-Value="passwordModel.NewPassword" type="password" class="form-control" />
+                                <ValidationMessage For="@(() => passwordModel.NewPassword)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Confirm New Password</label>
+                                <InputText @bind-Value="passwordModel.ConfirmNewPassword" type="password" class="form-control" />
+                                <ValidationMessage For="@(() => passwordModel.ConfirmNewPassword)" />
+                            </div>
+
+                            <div class="mt-4 text-end">
+                                <button type="submit" class="btn btn-warning text-white px-4">Update Password</button>
+                            </div>
+                        </EditForm>
+                    }
                 </div>
             </div>
         </div>
-    }
+    </div>
 </div>
 
 @code {
-    private UserProfileDto? profile;
-    private UpdateProfileRequest updateModel = new();
-
-    // UI Durum değişkenleri
+    // UI State
+    private string activeTab = "details";
     private bool isLoading = true;
     private bool isSaving = false;
     private bool isSaved = false;
     private string? errorMessage;
-    private string? saveErrorMessage;
+
+    // Data Models
+    private UserProfileDto? profile;
+    private UpdateProfileRequest updateModel = new();
+    private ChangePasswordModel passwordModel = new();
+
+    // Interest Management
+    private List<AreaOfInterestDto> availableInterests = new();
+    private List<string> selectedInterestsList = new();
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             isLoading = true;
-            errorMessage = null;
+            // Paralel veri çekimi
+            var profileTask = UsersClient.GetProfileAsync();
+            var interestsTask = UsersClient.GetInterestsAsync();
+            await Task.WhenAll(profileTask, interestsTask);
 
-            // API'den veri çek
-            profile = await UsersClient.GetProfileAsync();
+            profile = profileTask.Result;
+            availableInterests = interestsTask.Result;
 
             if (profile != null)
             {
                 updateModel = new UpdateProfileRequest
                 {
                     FullName = profile.FullName,
-                    Interests = profile.Interests
+                    Interests = profile.Interests,
+                    Affiliation = profile.Affiliation,
+                    Country = profile.Country,
+                    Biography = profile.Biography,
+                    Title = profile.Title
                 };
-            }
-            else
-            {
-                errorMessage = "Profile data returned empty.";
+
+                // Virgüllü string'i listeye çevir (Component için)
+                if (!string.IsNullOrEmpty(profile.Interests))
+                {
+                    selectedInterestsList = profile.Interests.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(i => i.Trim()).ToList();
+                }
             }
         }
         catch (Exception ex)
         {
-            // Hatayı ekrana yazdır ki devrenin kopmasını engelle
-            errorMessage = $"Connection error: {ex.Message}";
-            Console.WriteLine($"Profile Load Error: {ex}");
+            errorMessage = $"Error loading profile: {ex.Message}";
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    // Component'ten gelen değişikliği yakala
+    private void OnInterestsChanged(List<string> newList)
+    {
+        selectedInterestsList = newList;
+        updateModel.Interests = string.Join(",", selectedInterestsList);
+    }
+
+    private async Task HandleProfilePictureSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            if (e.File.Size > 2 * 1024 * 1024)
+            {
+                errorMessage = "Image size must be less than 2MB.";
+                return;
+            }
+            var url = await UsersClient.UploadProfilePictureAsync(e.File);
+            if (profile != null) profile.ProfilePictureUrl = url;
+            isSaved = true;
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
     }
 
     private async Task HandleSave()
@@ -149,25 +283,89 @@
         {
             isSaving = true;
             isSaved = false;
-            saveErrorMessage = null;
+            errorMessage = null;
+
+            // Listeyi stringe çevirip modele ata
+            updateModel.Interests = string.Join(",", selectedInterestsList);
 
             await UsersClient.UpdateProfileAsync(updateModel);
 
-            // Başarılı olursa model ve UI güncelle
+            // UI güncelle
             if (profile != null)
             {
                 profile.FullName = updateModel.FullName;
-                profile.Interests = updateModel.Interests;
+                profile.Title = updateModel.Title;
+                profile.Affiliation = updateModel.Affiliation;
+                profile.Country = updateModel.Country;
             }
             isSaved = true;
         }
         catch (Exception ex)
         {
-            saveErrorMessage = $"Could not save profile: {ex.Message}";
+            errorMessage = $"Save failed: {ex.Message}";
         }
         finally
         {
             isSaving = false;
         }
     }
+
+    private async Task HandlePasswordChange()
+    {
+        try
+        {
+            errorMessage = null;
+            await UsersClient.ChangePasswordAsync(passwordModel.CurrentPassword, passwordModel.NewPassword);
+            isSaved = true;
+            passwordModel = new(); // Formu temizle
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
 }
+
+<!-- Mevcut kodların en altına ekleyin -->
+
+<style>
+    /* Tab başlıklarının olduğu alanın arka planı */
+    .nav-tabs {
+        border-bottom: 2px solid #e9ecef;
+        background-color: #f8f9fa; /* Hafif gri arka plan */
+        border-radius: 8px 8px 0 0;
+        padding: 10px 10px 0 10px;
+    }
+
+        /* Genel Link Stili */
+        .nav-tabs .nav-link {
+            color: #6c757d; /* Pasif renk (Gri) */
+            border: none;
+            font-weight: 500;
+            padding: 10px 20px;
+            transition: all 0.2s ease;
+        }
+
+            /* Hover Durumu */
+            .nav-tabs .nav-link:hover {
+                color: #0d6efd; /* Mavi */
+                background-color: rgba(13, 110, 253, 0.05);
+                border-radius: 8px 8px 0 0;
+            }
+
+            /* AKTİF SEKME (Seçili Olan) */
+            .nav-tabs .nav-link.active {
+                color: #0f172a !important; /* Koyu Lacivert (Theme Primary) */
+                background-color: #ffffff !important; /* Beyaz */
+                border-bottom: 3px solid #0d6efd !important; /* Altına mavi çizgi */
+                font-weight: 700;
+                border-radius: 8px 8px 0 0;
+                box-shadow: 0 -2px 5px rgba(0,0,0,0.02);
+            }
+
+            /* İkonlar */
+            .nav-tabs .nav-link i {
+                margin-right: 8px;
+                font-size: 1.1em;
+            }
+</style>

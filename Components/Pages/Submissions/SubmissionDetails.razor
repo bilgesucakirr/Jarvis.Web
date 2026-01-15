@@ -21,6 +21,40 @@
     }
     else
     {
+        <!-- 7. Gereksinim: Camera Ready Süreci -->
+        @if (submission.Status == "CameraReadyRequested" || submission.Status == "Accepted")
+        {
+            <div class="alert alert-warning border-warning shadow-sm">
+                <h5 class="fw-bold"><i class="bi bi-camera-fill me-2"></i> Camera Ready Submission</h5>
+                <p class="mb-2">Your paper has been accepted pending final formatting. Please upload the final .docx version.</p>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" @onclick="OpenUploadModal">Upload Camera Ready Version</button>
+                </div>
+            </div>
+        }
+
+        <!-- 6. Gereksinim: Revizyon istendiyse veya kabul edildiyse hakem yorumlarını göster (Kör) -->
+        @if (submission.Status.Contains("Revision") || submission.Status == "Accepted")
+        {
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info bg-opacity-10 fw-bold">Reviewer Feedback</div>
+                <div class="card-body">
+                    <p class="text-muted small">Below are the anonymous comments from the reviewers to help improve your manuscript.</p>
+                    <!-- Not: Normalde Review servisinden çekilmesi gerekir, burada mockup gösterim yapıyoruz -->
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <strong>Reviewer #1:</strong>
+                            <span class="text-secondary">"The methodology section needs more clarity regarding the dataset selection..."</span>
+                        </div>
+                        <div class="list-group-item">
+                            <strong>Reviewer #2:</strong>
+                            <span class="text-secondary">"Excellent contribution, but please fix the typo in Figure 3."</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <div class="row">
             <!-- Sol Kolon: Makale Bilgileri -->
             <div class="col-md-8">
@@ -117,5 +151,11 @@
     private void GoBack()
     {
         Nav.NavigateTo("/dashboard");
+    }
+
+    private void OpenUploadModal()
+    {
+        // Dosya yükleme modalını aç (Basitleştirilmiş)
+        Console.WriteLine("Open Camera Ready Upload Modal");
     }
 }

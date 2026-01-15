@@ -12,7 +12,12 @@
 <div class="landing-wrapper">
     <nav class="landing-nav">
         <div class="container d-flex justify-content-between align-items-center h-100">
-            <div class="brand">JARVIS <span class="version">v1.0</span></div>
+            <!-- Logo Eklendi -->
+            <div class="brand d-flex align-items-center">
+                <img src="images/logo.png" class="me-2 rounded-circle bg-white p-1" style="width: 35px; height: 35px; object-fit: contain;" />
+                JARVIS <span class="version ms-2">v1.0</span>
+            </div>
+
             <div class="nav-links">
                 <button @onclick='() => Navigation.NavigateTo("login")' class="btn btn-outline-light me-2">Sign In</button>
                 <button @onclick='() => Navigation.NavigateTo("register")' class="btn btn-primary">Sign Up</button>

@@ -25,8 +25,20 @@
             <div class="card h-100">
                 <div class="card-header bg-white fw-bold">Find Reviewers</div>
                 <div class="card-body">
+                    <!-- 3. Gereksinim: İlgi Alanı Dropdown -->
+                    <div class="mb-2">
+                        <label class="form-label small text-muted">Filter by Interest</label>
+                        <select class="form-select" @bind="selectedInterest">
+                            <option value="">All Interests</option>
+                            <option value="AI">Artificial Intelligence</option>
+                            <option value="Machine Learning">Machine Learning</option>
+                            <option value="Software Engineering">Software Engineering</option>
+                            <option value="Security">Security</option>
+                        </select>
+                    </div>
+
                     <div class="input-group mb-3">
-                        <input class="form-control" @bind="keyword" placeholder="Keyword (Expertise/Name)" @onkeyup="@(e => { if (e.Key == "Enter") Search(); })" />
+                        <input class="form-control" @bind="keyword" placeholder="Search by Name" @onkeyup="@(e => { if (e.Key == "Enter") Search(); })" />
                         <button class="btn btn-secondary" @onclick="Search"><i class="bi bi-search"></i></button>
                     </div>
 
@@ -85,6 +97,7 @@
 @code {
     [Parameter] public Guid SubmissionId { get; set; }
     private string keyword = "";
+    private string selectedInterest = ""; // 3. Gereksinim
     private List<ReviewerDto> reviewers = new();
     private ReviewerDto? selectedReviewer;
     private DateTime dueDate = DateTime.Today.AddDays(14);
@@ -99,8 +112,8 @@
 
     private async Task Search()
     {
-        if (string.IsNullOrWhiteSpace(keyword)) return;
-        reviewers = await UsersClient.SearchReviewersAsync(keyword);
+        // 3. Gereksinim: Dropdown ile seçilen interest'i gönder
+        reviewers = await UsersClient.SearchReviewersAsync(keyword, selectedInterest);
     }
 
     private void SelectReviewer(ReviewerDto r)

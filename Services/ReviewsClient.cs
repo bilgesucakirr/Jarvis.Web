@@ -45,11 +45,19 @@ public class ReviewsClient
 
     public async Task<List<ReviewAssignmentModel>> GetMyAssignmentsAsync()
     {
-        await AddAuthHeader();
-        return await _httpClient.GetFromJsonAsync<List<ReviewAssignmentModel>>("api/Reviews/my-assignments")
-               ?? new List<ReviewAssignmentModel>();
-    }
+        await AddAuthHeader(); 
 
+        try
+        {
+            var result = await _httpClient.GetFromJsonAsync<List<ReviewAssignmentModel>>("api/Reviews/my-assignments");
+            return result ?? new List<ReviewAssignmentModel>();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            
+            return new List<ReviewAssignmentModel>();
+        }
+    }
     public async Task<ReviewAssignmentDetailDto?> GetAssignmentDetailAsync(Guid assignmentId)
     {
         await AddAuthHeader();

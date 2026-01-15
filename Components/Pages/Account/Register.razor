@@ -9,6 +9,12 @@
 
 <div class="auth-container d-flex justify-content-center align-items-center" style="height:100vh; background:#f0f2f5;">
     <div class="card p-4 shadow-sm" style="width: 400px;">
+
+        <!-- Logo Eklendi -->
+        <div class="text-center mb-2">
+            <img src="images/logo.png" style="width: 60px; height: 60px; object-fit: contain;" />
+        </div>
+
         <h3 class="text-center fw-bold mb-3">Join Jarvis</h3>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -37,7 +43,7 @@
             <div class="mb-4">
                 <label class="form-label">Areas of Interest / Expertise</label>
                 <InputTextArea @bind-Value="registerModel.Interests" class="form-control" rows="3" placeholder="e.g. Machine Learning, Biology, History..." />
-                <small class="text-muted" style="font-size:0.8em;">Used for reviewer matching.</small>
+                <small class="text-muted" style="font-size:0.8em;">Please list your main research interests.</small>
             </div>
 
             <button type="submit" class="btn btn-primary w-100">Sign Up</button>

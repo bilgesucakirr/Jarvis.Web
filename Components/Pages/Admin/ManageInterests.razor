@@ -1,0 +1,68 @@
+﻿@page "/admin/interests"
+@attribute [Authorize(Roles = "Admin")]
+@using Jarvis.Web.Services
+@using Jarvis.Web.Models
+@inject UsersClient UsersClient
+
+<div class="container py-4">
+    <h3 class="fw-bold mb-4">Manage Areas of Interest</h3>
+    <p class="text-muted">Standardize expertise areas for better reviewer matching.</p>
+
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-body">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="New Interest Name (e.g. Deep Learning)" @bind="newInterestName" />
+                <button class="btn btn-primary" @onclick="AddInterest">
+                    <i class="bi bi-plus-lg me-1"></i> Add
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white fw-bold">Existing Areas</div>
+        <ul class="list-group list-group-flush">
+            @if (interests.Any())
+            {
+                @foreach (var item in interests)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>@item.Name</span>
+                        <button class="btn btn-sm btn-outline-danger border-0" @onclick="() => DeleteInterest(item.Id)">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </li>
+                }
+            }
+            else
+            {
+                <li class="list-group-item text-muted text-center py-4">No interests defined yet.</li>
+            }
+        </ul>
+    </div>
+</div>
+
+@code {
+    private List<AreaOfInterestDto> interests = new();
+    private string newInterestName = "";
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => interests = await UsersClient.GetInterestsAsync();
+
+    private async Task AddInterest()
+    {
+        if (!string.IsNullOrWhiteSpace(newInterestName))
+        {
+            await UsersClient.AddInterestAsync(newInterestName);
+            newInterestName = "";
+            await Load();
+        }
+    }
+
+    private async Task DeleteInterest(int id)
+    {
+        await UsersClient.DeleteInterestAsync(id);
+        await Load();
+    }
+}

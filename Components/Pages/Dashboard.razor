@@ -5,6 +5,8 @@
 @using Jarvis.Web.Services
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ReviewsClient ReviewsClient
+@inject SubmissionsClient SubmissionsClient
+@inject VenueApiService VenueService
 @inject NavigationManager Nav
 
 <div class="container-fluid py-4">
@@ -14,61 +16,165 @@
     }
     else
     {
+        <!-- ÜST KISIM: ARAMA VE FİLTRELEME -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 py-2"
+                           placeholder="Search available venues by name or acronym..."
+                           @bind="searchTerm"
+                           @bind:event="oninput" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select shadow-sm py-2" @bind="filterType">
+                    <option value="">All Types</option>
+                    <option value="Conference">Conference</option>
+                    <option value="Journal">Journal</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ROL BAZLI İÇERİK -->
         @if (userRole == "EditorInChief" || userRole == "TrackChair" || userRole == "Admin")
         {
             <div class="alert alert-primary mb-4 border-0 shadow-sm">
                 <i class="bi bi-shield-lock-fill me-2"></i> You are logged in as <strong>@userRole</strong>
             </div>
-            <EditorDashboard />
+
+            <EditorDashboard SearchTerm="@searchTerm" FilterStatus="@filterType" />
         }
         else if (userRole == "Reviewer")
         {
+            <!-- REVIEWER DASHBOARD (Mevcut kod korundu) -->
             <div class="row g-4">
                 <div class="col-12">
                     <h3 class="fw-bold">Reviewer Dashboard</h3>
                     <p class="text-muted">Welcome back, Dr. @userName</p>
                 </div>
-
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm bg-warning bg-opacity-10 h-100 p-4" style="cursor:pointer" @onclick='() => Nav.NavigateTo("/my-reviews")'>
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-warning text-uppercase fw-bold">New Invitations</h6>
                                 <h2 class="fw-bold">@invitationCount</h2>
-                                <p class="mb-0 small text-muted">Awaiting your response</p>
                             </div>
                             <i class="bi bi-envelope-paper fs-1 text-warning"></i>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm bg-primary bg-opacity-10 h-100 p-4" style="cursor:pointer" @onclick='() => Nav.NavigateTo("/my-reviews")'>
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-primary text-uppercase fw-bold">Pending Reviews</h6>
                                 <h2 class="fw-bold">@pendingReviewCount</h2>
-                                <p class="mb-0 small text-muted">Accepted but not submitted</p>
                             </div>
                             <i class="bi bi-pencil-square fs-1 text-primary"></i>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-12 mt-4">
-                    <button class="btn btn-primary btn-lg px-5 shadow-sm" @onclick='() => Nav.NavigateTo("/my-reviews")'>
-                        Go to My Reviews List <i class="bi bi-arrow-right ms-2"></i>
-                    </button>
-                </div>
             </div>
         }
         else
         {
-            <div class="mb-4">
-                <h3 class="fw-bold">Welcome, Author!</h3>
-                <p class="text-muted">Select a venue below to start a new academic submission.</p>
+            <!-- AUTHOR DASHBOARD -->
+            <!-- 1. BÖLÜM: MY CONFERENCES (Başvurulan Konferanslar) -->
+            <div class="card mb-5 shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-folder-check me-2 text-primary"></i> My Conferences & Journals</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (myActiveConferences.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Venue Name</th>
+                                        <th>Latest Submission</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in myActiveConferences)
+                                    {
+                                        <tr>
+                                            <td class="ps-4 fw-bold text-dark">@item.VenueName</td>
+                                            <td>
+                                                <div class="text-truncate" style="max-width: 300px;">@item.SubmissionTitle</div>
+                                                <small class="text-muted">@item.SubmissionDate.ToShortDateString()</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusClass(item.Status)">@item.Status</span>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <button class="btn btn-sm btn-outline-secondary" @onclick='() => Nav.NavigateTo($"/submissions/{item.SubmissionId}")'>
+                                                    Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                            You haven't submitted to any conferences yet.
+                        </div>
+                    }
+                </div>
             </div>
-            <Jarvis.Web.Components.Pages.Venues.VenueList />
+
+            <!-- 2. BÖLÜM: AVAILABLE VENUES (Arama Yapılabilen Liste) -->
+            <h3 class="fw-bold mb-2">Available Venues</h3>
+            <p class="text-muted mb-4">Select a venue below to start a new academic submission.</p>
+
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Acronym</th>
+                                <th>Type</th>
+                                <th class="text-end pe-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (FilteredVenues.Any())
+                            {
+                                @foreach (var venue in FilteredVenues)
+                                {
+                                    <tr>
+                                        <td class="ps-4 fw-semibold">@venue.Name</td>
+                                        <td><span class="badge bg-light text-dark border">@venue.Acronym</span></td>
+                                        <td>@venue.Type</td>
+                                        <td class="text-end pe-4">
+                                            <button class="btn btn-primary btn-sm px-3" @onclick="@(() => Nav.NavigateTo($"/submit/{venue.Id}"))">
+                                                Select & Submit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        No venues found matching "<strong>@searchTerm</strong>"
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         }
     }
 </div>
@@ -77,8 +183,27 @@
     private string userRole = "";
     private string userName = "";
     private bool isLoading = true;
+
+    // Reviewer Data
     private int invitationCount = 0;
     private int pendingReviewCount = 0;
+
+    // Author Data
+    private List<VenueDto> allVenues = new();
+    private List<MyConferenceViewModel> myActiveConferences = new();
+
+    // Search & Filter
+    private string searchTerm = "";
+    private string filterType = "";
+
+    // Filtrelenmiş Liste (Search bar burayı etkiler)
+    private IEnumerable<VenueDto> FilteredVenues => allVenues
+        .Where(v =>
+            (string.IsNullOrEmpty(searchTerm) ||
+             v.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             v.Acronym.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filterType) || v.Type == filterType)
+        );
 
     protected override async Task OnInitializedAsync()
     {
@@ -96,8 +221,57 @@
                 invitationCount = reviews.Count(r => r.Status == "Invited");
                 pendingReviewCount = reviews.Count(r => r.Status == "Accepted");
             }
+            else
+            {
+                // Author ise hem Venues hem de Submissions çekip eşleştiriyoruz
+                try
+                {
+                    // Paralel veri çekme
+                    var venuesTask = VenueService.GetAllVenuesAsync();
+                    var submissionsTask = SubmissionsClient.GetMySubmissionsAsync();
+
+                    await Task.WhenAll(venuesTask, submissionsTask);
+
+                    allVenues = venuesTask.Result;
+                    var mySubmissions = submissionsTask.Result;
+
+                    // "My Conferences" listesini oluştur (Submission + Venue Name birleşimi)
+                    myActiveConferences = mySubmissions.Select(s => new MyConferenceViewModel
+                    {
+                        SubmissionId = s.Id,
+                        SubmissionTitle = s.Title,
+                        Status = s.Status,
+                        SubmissionDate = s.CreatedAt,
+                        VenueName = allVenues.FirstOrDefault(v => v.Id == s.VenueId)?.Name ?? "Unknown Venue"
+                    }).ToList();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Dashboard Load Error: {ex.Message}");
+                }
+            }
         }
 
         isLoading = false;
+    }
+
+    private string GetStatusClass(string status) => status switch
+    {
+        "Draft" => "bg-secondary bg-opacity-25 text-secondary",
+        "Submitted" => "bg-info bg-opacity-25 text-info",
+        "UnderReview" => "bg-warning bg-opacity-25 text-warning",
+        "Accepted" => "bg-success bg-opacity-25 text-success",
+        "Rejected" => "bg-danger bg-opacity-25 text-danger",
+        _ => "bg-light text-dark"
+    };
+
+    // View Model for Dashboard UI
+    public class MyConferenceViewModel
+    {
+        public Guid SubmissionId { get; set; }
+        public string VenueName { get; set; } = "";
+        public string SubmissionTitle { get; set; } = "";
+        public string Status { get; set; } = "";
+        public DateTime SubmissionDate { get; set; }
     }
 }

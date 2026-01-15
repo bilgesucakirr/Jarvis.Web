@@ -1,7 +1,9 @@
 ﻿using Blazored.LocalStorage;
 using Jarvis.Web.Models;
+using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Jarvis.Web.Services;
 
@@ -38,6 +40,44 @@ public class UsersClient
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<string> UploadProfilePictureAsync(IBrowserFile file)
+    {
+        await AddAuthHeader();
+
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(file.OpenReadStream(2 * 1024 * 1024));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", file.Name);
+
+        var response = await _httpClient.PostAsync("api/users/profile-picture", content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Upload failed: {error}");
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return result.GetProperty("url").GetString() ?? "";
+    }
+
+    public async Task<List<AreaOfInterestDto>> GetInterestsAsync()
+    {
+        return await _httpClient.GetFromJsonAsync<List<AreaOfInterestDto>>("api/interests") ?? new();
+    }
+
+    public async Task AddInterestAsync(string name)
+    {
+        await AddAuthHeader();
+        await _httpClient.PostAsJsonAsync("api/interests", name);
+    }
+
+    public async Task DeleteInterestAsync(int id)
+    {
+        await AddAuthHeader();
+        await _httpClient.DeleteAsync($"api/interests/{id}");
+    }
+
     public async Task<List<UserListDto>> GetAllUsersAsync()
     {
         await AddAuthHeader();
@@ -54,10 +94,28 @@ public class UsersClient
         }
     }
 
-    public async Task<List<ReviewerDto>> SearchReviewersAsync(string? keyword)
+    public async Task<List<ReviewerDto>> SearchReviewersAsync(string? keyword, string? interest = null)
     {
         await AddAuthHeader();
-        var url = string.IsNullOrEmpty(keyword) ? "api/users/reviewers" : $"api/users/reviewers?keyword={keyword}";
-        return await _httpClient.GetFromJsonAsync<List<ReviewerDto>>(url) ?? new();
+        var queryParams = new List<string>();
+        if (!string.IsNullOrEmpty(keyword)) queryParams.Add($"keyword={keyword}");
+        if (!string.IsNullOrEmpty(interest)) queryParams.Add($"interest={interest}");
+
+        var queryString = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
+
+        return await _httpClient.GetFromJsonAsync<List<ReviewerDto>>($"api/users/reviewers{queryString}") ?? new();
+    }
+
+    public async Task ChangePasswordAsync(string currentPassword, string newPassword)
+    {
+        await AddAuthHeader();
+        var payload = new { CurrentPassword = currentPassword, NewPassword = newPassword };
+        var response = await _httpClient.PostAsJsonAsync("api/users/change-password", payload);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(); // JSON içindeki mesajı almak gerekebilir
+            throw new Exception("Password change failed. Check your current password.");
+        }
     }
 }

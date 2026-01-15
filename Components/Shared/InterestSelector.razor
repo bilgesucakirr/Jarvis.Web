@@ -1,0 +1,77 @@
+﻿@using Jarvis.Web.Models
+
+<div class="interest-selector">
+    <!-- Seçilenler (Chips) -->
+    <div class="selected-chips mb-2">
+        @foreach (var interest in SelectedInterests)
+        {
+            <span class="badge bg-primary me-1 mb-1 p-2 rounded-pill">
+                @interest
+                <span class="ms-2 cursor-pointer text-white-50" @onclick="() => RemoveInterest(interest)" style="cursor:pointer">
+                    <i class="bi bi-x-circle-fill"></i>
+                </span>
+            </span>
+        }
+    </div>
+
+    <!-- Arama Inputu -->
+    <div class="position-relative">
+        <input type="text" class="form-control" placeholder="Search and add interests..."
+               @bind="searchTerm" @bind:event="oninput" @onfocus="() => showDropdown = true" @onblur="OnBlur" />
+
+        <!-- Dropdown Liste -->
+        @if (showDropdown && !string.IsNullOrEmpty(searchTerm))
+        {
+            <div class="list-group position-absolute w-100 shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto;">
+                @foreach (var item in FilteredList)
+                {
+                    <button type="button" class="list-group-item list-group-item-action" @onmousedown="() => AddInterest(item.Name)">
+                        @item.Name
+                    </button>
+                }
+                @if (!FilteredList.Any())
+                {
+                    <div class="list-group-item text-muted small">No matches found.</div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<AreaOfInterestDto> AllInterests { get; set; } = new();
+    [Parameter] public List<string> SelectedInterests { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> SelectedInterestsChanged { get; set; }
+
+    private string searchTerm = "";
+    private bool showDropdown = false;
+
+    private IEnumerable<AreaOfInterestDto> FilteredList =>
+        AllInterests
+            .Where(i => i.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) &&
+                        !SelectedInterests.Contains(i.Name))
+            .Take(10); // Sadece ilk 10 sonucu göster
+
+    private async Task AddInterest(string name)
+    {
+        if (!SelectedInterests.Contains(name))
+        {
+            SelectedInterests.Add(name);
+            searchTerm = "";
+            await SelectedInterestsChanged.InvokeAsync(SelectedInterests);
+        }
+    }
+
+    private async Task RemoveInterest(string name)
+    {
+        SelectedInterests.Remove(name);
+        await SelectedInterestsChanged.InvokeAsync(SelectedInterests);
+    }
+
+    private async Task OnBlur()
+    {
+        // Tıklama eventinin işlenmesi için biraz gecikme
+        await Task.Delay(200);
+        showDropdown = false;
+    }
+}

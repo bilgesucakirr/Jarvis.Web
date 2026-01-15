@@ -1,7 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthStateProvider
 
-<div class="sidebar-header ps-3 pt-3 pb-3 text-white">
+<div class="sidebar-header ps-3 pt-3 pb-3 text-white d-flex align-items-center">
+    <img src="images/logo.png" alt="Jarvis Logo" class="me-3 rounded-circle bg-white p-1" style="width: 40px; height: 40px; object-fit: contain;" />
     <span class="fs-4 fw-bold">JARVIS</span>
 </div>
 
@@ -54,6 +55,11 @@
                     <span class="bi bi-people" aria-hidden="true"></span> Users
                 </NavLink>
             </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/interests">
+                    <span class="bi bi-tags" aria-hidden="true"></span> Interests
+                </NavLink>
+            </div>
         </AuthorizeView>
 
     </nav>
@@ -84,6 +90,10 @@
     }
 
     .bi-plus-circle::before {
+        margin-right: 10px;
+    }
+
+    .bi-tags::before {
         margin-right: 10px;
     }
 

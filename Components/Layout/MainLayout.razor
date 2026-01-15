@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject Jarvis.Web.Services.IAuthService AuthService
+@inject Jarvis.Web.Services.UsersClient UsersClient  // <-- Inject Edildiğinden Emin Olun
 @inject AuthenticationStateProvider AuthStateProvider
 
 <div class="page">
@@ -13,8 +14,17 @@
         <div class="top-row">
             <AuthorizeView>
                 <Authorized>
-                    <span class="me-3 text-secondary fw-bold">
-                        <i class="bi bi-person-circle me-1"></i> @context.User.Identity?.Name
+                    <span class="me-3 d-flex align-items-center text-secondary fw-bold">
+                        <!-- Profil Resmi Gösterimi -->
+                        @if (!string.IsNullOrEmpty(userProfilePic))
+                        {
+                                <img src="@userProfilePic" class="rounded-circle me-2 border" style="width: 36px; height: 36px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                                <i class="bi bi-person-circle me-2 fs-4"></i>
+                        }
+                        @context.User.Identity?.Name
                     </span>
                     <button class="btn btn-outline-danger btn-sm" @onclick="Logout">
                         <i class="bi bi-box-arrow-right"></i> Sign Out
@@ -26,7 +36,6 @@
             </AuthorizeView>
         </div>
 
-        <!-- CONTENT -->
         <article class="content">
             @Body
         </article>
@@ -34,6 +43,29 @@
 </div>
 
 @code {
+    private string? userProfilePic;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity != null && authState.User.Identity.IsAuthenticated)
+        {
+            try
+            {
+                // Kullanıcı giriş yapmışsa profil resmini API'den çek
+                var profile = await UsersClient.GetProfileAsync();
+                if (profile != null)
+                {
+                    userProfilePic = profile.ProfilePictureUrl;
+                }
+            }
+            catch
+            {
+                // Hata olursa (örneğin API kapalıysa) varsayılan ikon kalır, uygulama patlamaz.
+            }
+        }
+    }
+
     private async Task Logout()
     {
         await AuthService.Logout();
