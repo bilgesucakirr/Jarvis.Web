@@ -7,50 +7,74 @@
 
 @rendermode InteractiveServer
 
-<div class="auth-container d-flex justify-content-center align-items-center" style="height:100vh; background:#f0f2f5;">
-    <div class="card p-4 shadow-sm" style="width: 400px;">
-
-        <!-- Logo Eklendi -->
-        <div class="text-center mb-2">
-            <img src="images/logo.png" style="width: 60px; height: 60px; object-fit: contain;" />
-        </div>
-
-        <h3 class="text-center fw-bold mb-3">Join Jarvis</h3>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger">@errorMessage</div>
-        }
-
-        <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
-            <DataAnnotationsValidator />
-
-            <div class="mb-3">
-                <label class="form-label">Full Name</label>
-                <InputText @bind-Value="registerModel.FullName" class="form-control" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <InputText @bind-Value="registerModel.Email" class="form-control" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
-            </div>
-
+<div class="auth-container">
+    <!-- SOL TARAFTAKİ GÖRSEL ALAN -->
+    <div class="auth-visual-side">
+        <div class="auth-overlay"></div>
+        <div class="auth-content">
             <div class="mb-4">
-                <label class="form-label">Areas of Interest / Expertise</label>
-                <InputTextArea @bind-Value="registerModel.Interests" class="form-control" rows="3" placeholder="e.g. Machine Learning, Biology, History..." />
-                <small class="text-muted" style="font-size:0.8em;">Please list your main research interests.</small>
+                <img src="images/logo.png" alt="Jarvis Logo" class="rounded-circle bg-white p-2 shadow-lg" style="width: 120px; height: 120px; object-fit: contain;" />
+            </div>
+            <h3 class="text-light fw-bold">Join the Community</h3>
+            <p class="text-white-50 mt-3 fs-5 px-4">
+                Become part of the most advanced academic management ecosystem.
+                Submit papers, review cutting-edge research, and collaborate.
+            </p>
+        </div>
+    </div>
+
+    <!-- SAĞ TARAFTAKİ FORM ALANI -->
+    <div class="auth-form-side">
+        <div class="form-wrapper">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-dark">Create Account</h2>
+                <p class="text-muted">Start your academic journey today</p>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">Sign Up</button>
-        </EditForm>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger d-flex align-items-center small py-2 shadow-sm border-0 border-start border-4 border-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <div>@errorMessage</div>
+                </div>
+            }
 
-        <div class="text-center mt-3">
-            <a href="/login">Already have an account? Sign In</a>
+            <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="custom-label">Full Name</label>
+                    <InputText @bind-Value="registerModel.FullName" class="form-control custom-input" placeholder="John Doe" />
+                    <ValidationMessage For="@(() => registerModel.FullName)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="custom-label">Email Address</label>
+                    <InputText @bind-Value="registerModel.Email" class="form-control custom-input" placeholder="academic@university.edu" />
+                    <ValidationMessage For="@(() => registerModel.Email)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="custom-label">Password</label>
+                    <InputText @bind-Value="registerModel.Password" type="password" class="form-control custom-input" placeholder="••••••••" />
+                    <ValidationMessage For="@(() => registerModel.Password)" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="custom-label">Areas of Interest / Expertise</label>
+                    <InputTextArea @bind-Value="registerModel.Interests" class="form-control custom-input" rows="3" placeholder="e.g. Machine Learning, Cloud Computing, History..." />
+                    <div class="form-text small text-muted ms-1"><i class="bi bi-info-circle me-1"></i>Helps us match you with relevant papers.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 btn-custom-primary">
+                    Create Account
+                </button>
+            </EditForm>
+
+            <div class="text-center mt-4">
+                <span class="text-muted">Already have an account?</span>
+                <a href="/login" class="fw-bold text-decoration-none ms-1">Sign In</a>
+            </div>
         </div>
     </div>
 </div>
@@ -72,3 +96,127 @@
         }
     }
 }
+
+<style>
+    .auth-container {
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        display: flex;
+    }
+
+    /* Sol Görsel Alanı (Login ile aynı stil, farklı görsel opsiyonel) */
+    .auth-visual-side {
+        flex: 1; /* Login'den biraz daha dar olabilir, form uzun */
+        background-image: url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop'); /* Farklı bir akademik görsel */
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    .auth-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(59, 130, 246, 0.8) 100%); /* Hafif farklı ton */
+        z-index: 1;
+    }
+
+    .auth-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        padding: 2rem;
+        max-width: 500px;
+    }
+
+    /* Sağ Form Alanı */
+    .auth-form-side {
+        flex: 1.2; /* Form alanı daha geniş olsun */
+        background-color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: -10px 0 20px rgba(0,0,0,0.05);
+        z-index: 10;
+        overflow-y: auto; /* Form taşarsa scroll olsun */
+    }
+
+    .form-wrapper {
+        width: 100%;
+        max-width: 420px; /* Login'den tık daha geniş */
+    }
+
+    /* Input Stilleri (Login ile birebir aynı) */
+    .custom-input {
+        border: 2px solid #f1f5f9;
+        border-radius: 10px;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+        font-size: 0.95rem;
+    }
+
+        .custom-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            background-color: #fff;
+        }
+
+    .custom-label {
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 6px;
+        margin-left: 4px;
+        font-size: 0.9rem;
+    }
+
+    .btn-custom-primary {
+        padding: 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-top: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        background-color: #0f172a;
+        border: none;
+    }
+
+        .btn-custom-primary:hover {
+            background-color: #1e293b;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+        }
+
+        .btn-custom-primary:active {
+            transform: scale(0.98);
+        }
+
+    /* Mobil Uyumluluk */
+    @@media (max-width: 900px) {
+        .auth-container {
+            flex-direction: column;
+            overflow-y: auto; /* Tüm sayfa scroll olsun */
+        }
+
+        .auth-visual-side {
+            flex: none;
+            height: 250px; /* Üstte görsel */
+        }
+
+        .auth-form-side {
+            flex: none;
+            padding: 2rem 1.5rem;
+            min-height: calc(100vh - 250px);
+            border-radius: 30px 30px 0 0; /* Modern yuvarlak köşe */
+            margin-top: -30px;
+        }
+    }
+</style>

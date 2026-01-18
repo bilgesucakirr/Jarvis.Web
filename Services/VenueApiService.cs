@@ -93,4 +93,11 @@ public class VenueApiService
 
         return "";
     }
+
+    public async Task<List<VenueDto>> GetMyManagedVenuesAsync()
+    {
+        await AddAuthHeader();
+        var response = await _httpClient.GetFromJsonAsync<List<VenueDto>>("api/Venues/managed");
+        return response ?? new List<VenueDto>();
+    }
 }

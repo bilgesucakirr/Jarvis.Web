@@ -35,7 +35,7 @@ public class ReviewsClient
         content.Add(new StringContent(model.OverallScore.ToString()), "OverallScore");
         content.Add(new StringContent(model.Confidence.ToString()), "Confidence");
         content.Add(new StringContent(model.CommentsToAuthor), "CommentsToAuthor");
-        content.Add(new StringContent(model.Recommendation), "Recommendation"); // YENİ
+        content.Add(new StringContent(model.Recommendation), "Recommendation");
 
         if (model.CommentsToEditor is not null)
             content.Add(new StringContent(model.CommentsToEditor), "CommentsToEditor");
@@ -52,31 +52,39 @@ public class ReviewsClient
             throw new Exception($"Submission failed: {error}");
         }
     }
-    public async Task<List<ReviewAssignmentModel>> GetMyAssignmentsAsync()
-    {
-        await AddAuthHeader(); 
 
-        try
-        {
-            var result = await _httpClient.GetFromJsonAsync<List<ReviewAssignmentModel>>("api/Reviews/my-assignments");
-            return result ?? new List<ReviewAssignmentModel>();
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            
-            return new List<ReviewAssignmentModel>();
-        }
-    }
-    public async Task<ReviewAssignmentDetailDto?> GetAssignmentDetailAsync(Guid assignmentId)
+    public async Task<List<ReviewAssignmentModel>> GetMyAssignmentsAsync()
     {
         await AddAuthHeader();
         try
         {
-            return await _httpClient.GetFromJsonAsync<ReviewAssignmentDetailDto>($"api/Assignments/{assignmentId}");
+            return await _httpClient.GetFromJsonAsync<List<ReviewAssignmentModel>>("api/Reviews/my-assignments") ?? new();
         }
-        catch
+        catch { return new(); }
+    }
+
+    public async Task<ReviewAssignmentDetailDto?> GetAssignmentDetailAsync(Guid assignmentId)
+    {
+        await AddAuthHeader();
+        try { return await _httpClient.GetFromJsonAsync<ReviewAssignmentDetailDto>($"api/Assignments/{assignmentId}"); }
+        catch { return null; }
+    }
+
+    public async Task<List<AnonymousReviewDto>> GetAnonymousReviewsAsync(Guid submissionId)
+    {
+        await AddAuthHeader();
+        try
         {
-            return null;
+            return await _httpClient.GetFromJsonAsync<List<AnonymousReviewDto>>($"api/Reviews/submission/{submissionId}/anonymous") ?? new();
         }
+        catch { return new(); }
+    }
+
+    public class AnonymousReviewDto
+    {
+        public decimal OverallScore { get; set; }
+        public string CommentsToAuthor { get; set; } = string.Empty;
+        public string? AttachmentUrl { get; set; }
+        public DateTime SubmittedAt { get; set; }
     }
 }

@@ -1,77 +1,41 @@
 ﻿@using Jarvis.Web.Models
 @using Jarvis.Web.Services
-@using System.Text
 @inject SubmissionsClient SubmissionsClient
 @inject NavigationManager Nav
-@inject IJSRuntime JS
 
-<!-- İstatistik Kartları (Filtreden etkilenmez, genel durumu gösterir) -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="stats-card bg-white p-3 shadow-sm rounded-3 border-start border-4 border-primary">
-            <div class="text-muted small text-uppercase fw-bold ls-1">Total Submissions</div>
-            <div class="d-flex justify-content-between align-items-center mt-2">
-                <h2 class="mb-0 fw-bold text-dark">@(submissions?.Count ?? 0)</h2>
-                <div class="icon-circle bg-primary-subtle text-primary"><i class="bi bi-file-earmark-text"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stats-card bg-white p-3 shadow-sm rounded-3 border-start border-4 border-warning">
-            <div class="text-muted small text-uppercase fw-bold ls-1">Pending Reviews</div>
-            <div class="d-flex justify-content-between align-items-center mt-2">
-                <h2 class="mb-0 fw-bold text-dark">@GetPendingCount()</h2>
-                <div class="icon-circle bg-warning-subtle text-warning"><i class="bi bi-hourglass-split"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stats-card bg-white p-3 shadow-sm rounded-3 border-start border-4 border-success">
-            <div class="text-muted small text-uppercase fw-bold ls-1">Accepted</div>
-            <div class="d-flex justify-content-between align-items-center mt-2">
-                <h2 class="mb-0 fw-bold text-dark">@GetAcceptedCount()</h2>
-                <div class="icon-circle bg-success-subtle text-success"><i class="bi bi-check-lg"></i></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm border-0 rounded-3">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom-0">
+<div class="card border-0 shadow-sm rounded-4 mt-4">
+    <div class="card-header bg-white py-4 border-0 d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0 fw-bold text-dark">Submission Management</h5>
-            <p class="text-muted small mb-0">Manage and track all academic submissions</p>
+            <h5 class="fw-bold mb-0">Submission Management</h5>
+            <p class="text-muted small mb-0">Tracking all manuscripts for this venue</p>
         </div>
-        <div>
-            <!-- Butonlar İşlevsel Hale Getirildi -->
-            <button class="btn btn-light border btn-sm text-muted me-2" @onclick="ClearFilters">
-                <i class="bi bi-x-circle"></i> Clear Filters
-            </button>
-            <button class="btn btn-primary btn-sm" @onclick="ExportToCsv">
-                <i class="bi bi-download"></i> Export CSV
-            </button>
+        <div class="d-flex gap-2">
+            <div class="input-group input-group-sm" style="width: 250px;">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control bg-light border-0" placeholder="Filter by title..." @bind="searchTerm" @bind:event="oninput" />
+            </div>
         </div>
     </div>
 
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 custom-table">
-            <thead class="bg-light">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-secondary small text-uppercase">
                 <tr>
-                    <th class="ps-4 text-secondary text-uppercase small fw-bold">Ref No</th>
-                    <th class="text-secondary text-uppercase small fw-bold" style="width: 40%;">Title / Status</th>
-                    <th class="text-center text-secondary text-uppercase small fw-bold">Review Progress</th>
-                    <th class="text-secondary text-uppercase small fw-bold">Submitted Date</th>
-                    <th class="text-end pe-4 text-secondary text-uppercase small fw-bold">Actions</th>
+                    <th class="ps-4 py-3">Reference</th>
+                    <th class="py-3">Title & Status</th>
+                    <th class="py-3 text-center">Review Progress</th>
+                    <th class="py-3">Date</th>
+                    <th class="py-3 text-end pe-4">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                @if (FilteredSubmissions == null)
+                @if (submissions == null)
                 {
-                    <tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-primary"></div></td></tr>
+                    <tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>
                 }
                 else if (!FilteredSubmissions.Any())
                 {
-                    <tr><td colspan="5" class="text-center p-5 text-muted">No submissions found matching criteria.</td></tr>
+                    <tr><td colspan="5" class="text-center py-5 text-muted">No submissions found for this venue.</td></tr>
                 }
                 else
                 {
@@ -79,44 +43,37 @@
                     {
                         <tr>
                             <td class="ps-4">
-                                <span class="font-monospace text-primary bg-primary-subtle px-2 py-1 rounded small">
+                                <span class="badge bg-light text-dark border font-monospace">
                                     @(string.IsNullOrEmpty(sub.ReferenceNumber) ? "DRAFT" : sub.ReferenceNumber)
                                 </span>
                             </td>
                             <td>
                                 <div class="fw-bold text-dark mb-1">@sub.Title</div>
-                                <span class="badge rounded-pill @GetStatusBadgeClass(sub.Status) px-3">
-                                    @sub.Status
-                                </span>
+                                <span class="badge rounded-pill @GetStatusClass(sub.Status) fw-normal">@sub.Status</span>
                             </td>
                             <td class="text-center">
-                                <div class="d-flex flex-column align-items-center">
-                                    <div class="progress w-75" style="height: 6px;">
-                                        <div class="progress-bar @GetProgressBarColor(sub.ReviewersAssignedCount, sub.ReviewsCompletedCount)"
-                                             role="progressbar"
-                                             style="width: @GetProgressPercentage(sub.ReviewersAssignedCount, sub.ReviewsCompletedCount)%">
-                                        </div>
+                                <div class="d-flex flex-column align-items-center" style="min-width: 150px;">
+                                    <div class="progress w-100 bg-light mb-1" style="height: 6px;">
+                                        <div class="progress-bar @GetProgressColor(sub)" role="progressbar"
+                                             style="width: @GetProgressPercent(sub)%"></div>
                                     </div>
-                                    <span class="small text-muted mt-1">
+                                    <small class="text-muted" style="font-size: 0.7rem;">
                                         @sub.ReviewsCompletedCount / @sub.ReviewersAssignedCount Completed
-                                    </span>
+                                    </small>
                                 </div>
                             </td>
-                            <td class="text-muted small">
-                                <i class="bi bi-calendar3 me-1"></i> @sub.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                            <td>
+                                <div class="small text-dark">@sub.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
                             </td>
                             <td class="text-end pe-4">
-                                <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-secondary rounded-start" title="View Details"
-                                            @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}")'>
-                                        <i class="bi bi-eye"></i>
+                                <div class="btn-group shadow-sm">
+                                    <button class="btn btn-sm btn-white border" @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}")' title="View Details">
+                                        <i class="bi bi-eye-fill text-primary"></i>
                                     </button>
-
-                                    @if (sub.Status != "Draft")
+                                    @if (sub.Status != "Draft" && sub.Status != "Rejected")
                                     {
-                                        <button class="btn btn-sm btn-outline-primary" title="Assign Reviewer"
-                                                @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}/assign")'>
-                                            <i class="bi bi-person-plus-fill"></i>
+                                        <button class="btn btn-sm btn-white border" @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}/assign")' title="Assign Reviewers">
+                                            <i class="bi bi-person-plus-fill text-dark"></i>
                                         </button>
                                     }
                                 </div>
@@ -129,121 +86,52 @@
     </div>
 </div>
 
-<style>
-    .ls-1 {
-        letter-spacing: 1px;
-    }
-
-    .icon-circle {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
-
-    .custom-table th {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #f1f5f9;
-    }
-
-    .custom-table td {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        vertical-align: middle;
-    }
-
-    .stats-card {
-        transition: transform 0.2s;
-    }
-
-        .stats-card:hover {
-            transform: translateY(-3px);
-        }
-</style>
-
 @code {
-    // Parent'tan (Dashboard.razor) gelen parametreler
-    [Parameter] public string SearchTerm { get; set; } = "";
-    [Parameter] public string FilterStatus { get; set; } = "";
-
+    [Parameter] public Guid VenueId { get; set; }
     private List<SubmissionStatsModel>? submissions;
+    private string searchTerm = "";
 
-    // Filtrelenmiş Liste (SearchTerm ve FilterStatus'a göre dinamik hesaplanır)
     private IEnumerable<SubmissionStatsModel> FilteredSubmissions =>
-        submissions?
-            .Where(s => (string.IsNullOrEmpty(SearchTerm) || s.Title.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) || (s.ReferenceNumber ?? "").Contains(SearchTerm, StringComparison.OrdinalIgnoreCase)) &&
-                        (string.IsNullOrEmpty(FilterStatus) || s.Status == FilterStatus))
-            ?? new List<SubmissionStatsModel>();
+        submissions?.Where(s => string.IsNullOrEmpty(searchTerm) || s.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        ?? new List<SubmissionStatsModel>();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
+    {
+        submissions = null;
+        await LoadData();
+    }
+
+    private async Task LoadData()
     {
         try
         {
-            submissions = await SubmissionsClient.GetEditorSubmissionsAsync();
+            submissions = await SubmissionsClient.GetEditorSubmissionsAsync(VenueId);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine($"Error loading filtered submissions: {ex.Message}");
         }
     }
 
-    private void ClearFilters()
+    private int GetProgressPercent(SubmissionStatsModel s) => s.ReviewersAssignedCount == 0 ? 0 : (s.ReviewsCompletedCount * 100 / s.ReviewersAssignedCount);
+
+    private string GetProgressColor(SubmissionStatsModel s)
     {
-        // Bu metod sadece lokal state'i temizler, parent state'i etkilemesi için EventCallback gerekir
-        // Şimdilik basitçe console log atıyoruz, gerçekte Dashboard'daki inputları temizlemeli.
-        Console.WriteLine("Filters cleared");
-    }
-
-    private async Task ExportToCsv()
-    {
-        if (submissions == null || !submissions.Any()) return;
-
-        var builder = new StringBuilder();
-        builder.AppendLine("ReferenceNumber,Title,Status,Date");
-
-        foreach (var sub in FilteredSubmissions)
-        {
-            builder.AppendLine($"{sub.ReferenceNumber},\"{sub.Title}\",{sub.Status},{sub.CreatedAt}");
-        }
-
-        // Basit indirme işlemi (JS Interop kullanarak)
-        var fileName = $"submissions_export_{DateTime.Now:yyyyMMdd}.csv";
-        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, builder.ToString());
-    }
-
-    // --- Yardımcı Metodlar (Renklendirme vb.) ---
-    private string GetStatusBadgeClass(string status) => status switch
-    {
-        "Draft" => "bg-secondary-subtle text-secondary border border-secondary-subtle",
-        "Submitted" => "bg-info-subtle text-info border border-info-subtle",
-        "UnderReview" => "bg-warning-subtle text-warning border border-warning-subtle",
-        "Accepted" => "bg-success-subtle text-success border border-success-subtle",
-        "Rejected" => "bg-danger-subtle text-danger border border-danger-subtle",
-        "MinorRevisionRequired" => "bg-primary-subtle text-primary border border-primary-subtle",
-        "MajorRevisionRequired" => "bg-primary-subtle text-primary border border-primary-subtle",
-        "CameraReadyRequested" => "bg-dark-subtle text-dark border border-dark-subtle",
-        _ => "bg-light text-dark border"
-    };
-
-    private int GetProgressPercentage(int assigned, int completed)
-    {
-        if (assigned == 0) return 0;
-        return (int)((double)completed / assigned * 100);
-    }
-
-    private string GetProgressBarColor(int assigned, int completed)
-    {
-        if (assigned == 0) return "bg-secondary";
-        var pct = GetProgressPercentage(assigned, completed);
-        if (pct == 100) return "bg-success";
-        if (pct >= 50) return "bg-info";
+        if (s.ReviewersAssignedCount == 0) return "bg-secondary";
+        var p = GetProgressPercent(s);
+        if (p == 100) return "bg-success";
+        if (p >= 50) return "bg-info";
         return "bg-warning";
     }
 
-    private int GetPendingCount() => submissions?.Count(s => s.Status == "Submitted" || s.Status == "UnderReview") ?? 0;
-    private int GetAcceptedCount() => submissions?.Count(s => s.Status == "Accepted") ?? 0;
+    private string GetStatusClass(string s) => s switch
+    {
+        "Submitted" => "bg-info-subtle text-info",
+        "UnderReview" => "bg-primary-subtle text-primary",
+        "Accepted" => "bg-success-subtle text-success",
+        "CameraReadySubmitted" => "bg-success text-white",
+        "MinorRevisionRequired" => "bg-warning-subtle text-warning",
+        "Rejected" => "bg-danger-subtle text-danger",
+        _ => "bg-light text-dark"
+    };
 }

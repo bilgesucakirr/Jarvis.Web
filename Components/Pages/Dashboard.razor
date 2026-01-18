@@ -4,367 +4,281 @@
 @using Jarvis.Web.Models
 @using Jarvis.Web.Services
 @inject AuthenticationStateProvider AuthStateProvider
-@inject ReviewsClient ReviewsClient
-@inject SubmissionsClient SubmissionsClient
 @inject VenueApiService VenueService
+@inject SubmissionsClient SubmissionsClient
+@inject ReviewsClient ReviewsClient
 @inject NavigationManager Nav
 
-<div class="container-fluid py-4" style="max-width: 1400px;">
+@rendermode InteractiveServer
+
+<div class="container py-4">
+    <div class="mb-5">
+        <h2 class="fw-bold text-dark">Welcome, <span class="text-primary">@userName</span></h2>
+        <p class="text-muted">Academic Management Workspace</p>
+    </div>
+
     @if (isLoading)
     {
-        <div class="d-flex flex-column align-items-center justify-content-center min-vh-50">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-            <p class="mt-3 text-muted fw-medium">Loading your workspace...</p>
+        <div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div></div>
+    }
+    else if (userRole == "EditorInChief" || userRole == "Admin")
+    {
+        <!-- EDİTÖR GÖRÜNÜMÜ: YÖNETİLEN VENUELAR -->
+        <div class="row g-4 mb-5">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-secondary text-uppercase small ls-1">Managed Venues</h5>
+                    <button class="btn btn-sm btn-primary px-3 shadow-sm" @onclick='() => Nav.NavigateTo("/venues/create")'>
+                        <i class="bi bi-plus-lg me-1"></i> Create New Venue
+                    </button>
+                </div>
+            </div>
+
+            @if (myManagedVenues != null && myManagedVenues.Any())
+            {
+                @foreach (var venue in myManagedVenues)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm venue-select-card h-100 @(selectedVenueId == venue.Id ? "border-primary-active" : "")"
+                             @onclick="() => SelectVenue(venue.Id)">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle">@venue.Acronym</span>
+                                    @if (selectedVenueId == venue.Id)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+                                    }
+                                    else
+                                    {
+
+                                        <i class="bi bi-arrow-right-circle text-muted"></i>
+                                    }
+                                </div>
+                                <h5 class="fw-bold text-dark mb-1">@venue.Name</h5>
+                                <p class="text-muted small mb-0">Management Panel</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="col-12"><div class="alert alert-light border text-center py-5">No managed venues found.</div></div>
+            }
+        </div>
+
+        @if (selectedVenueId != Guid.Empty)
+        {
+            <!-- SEÇİLİ VENUE İÇİN EDİTÖR DASHBOARD'U ÇAĞIRILIYOR -->
+            <div class="fade-in mt-2">
+                <EditorDashboard VenueId="selectedVenueId" />
+            </div>
+        }
+        else if (myManagedVenues?.Any() == true)
+        {
+            <div class="text-center p-5 border rounded-3 bg-light bg-opacity-50">
+                <i class="bi bi-hand-index-thumb fs-2 text-muted"></i>
+                <p class="text-muted mt-2">Please select a venue above to manage submissions.</p>
+            </div>
+        }
+    }
+    else if (userRole == "Reviewer")
+    {
+        <!-- REVIEWER GÖRÜNÜMÜ: İSTATİSTİK KARTLARI -->
+        <h5 class="fw-bold text-secondary text-uppercase small ls-1 mb-3">My Review Summary</h5>
+
+        @if (reviewerAssignments == null)
+        {
+            <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else
+        {
+            <div class="row g-4 mb-5">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm hover-card bg-info-subtle" @onclick='() => Nav.NavigateTo("/my-reviews")' style="cursor:pointer">
+                        <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="text-info-emphasis text-uppercase fw-bold ls-1 mb-1">New Invitations</h6>
+                                <h1 class="display-4 fw-bold mb-0 text-dark">@invitationCount</h1>
+                                <small class="text-muted">Awaiting Response</small>
+                            </div>
+                            <i class="bi bi-envelope-paper fs-1 text-info opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm hover-card bg-warning-subtle" @onclick='() => Nav.NavigateTo("/my-reviews")' style="cursor:pointer">
+                        <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="text-warning-emphasis text-uppercase fw-bold ls-1 mb-1">Active Reviews</h6>
+                                <h1 class="display-4 fw-bold mb-0 text-dark">@pendingReviewCount</h1>
+                                <small class="text-muted">In Progress / Action Required</small>
+                            </div>
+                            <i class="bi bi-pencil-square fs-1 text-warning opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else if (userRole == "Author" || userRole == "User")
+    {
+        <!-- YAZAR GÖRÜNÜMÜ: SUBMISSIONS & AVAILABLE VENUES -->
+        @if (mySubmissions != null && mySubmissions.Any())
+        {
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-secondary text-uppercase small ls-1">My Active Submissions</h5>
+                        <button class="btn btn-sm btn-outline-primary shadow-sm" @onclick='() => Nav.NavigateTo("/my-submissions")'>View All</button>
+                    </div>
+                    <div class="row g-3">
+                        @foreach (var sub in mySubmissions.Take(3))
+                        {
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm h-100 submission-quick-card" @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}")'>
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="badge @GetStatusClass(sub.Status) super-small">@sub.Status</span>
+                                            <small class="text-muted font-monospace" style="font-size: 0.7rem;">@sub.ReferenceNumber</small>
+                                        </div>
+                                        <h6 class="fw-bold text-dark text-truncate mb-0">@sub.Title</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-secondary text-uppercase small ls-1">Available Venues</h5>
+                    <div class="input-group input-group-sm w-auto" style="max-width: 250px;">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" placeholder="Search venues..." @bind="searchTerm" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                @if (allVenues == null)
+                {
+                    <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+                }
+                else
+                {
+                    <div class="row g-4">
+                        @foreach (var venue in FilteredVenues)
+                        {
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card border-0 shadow-sm h-100 venue-card">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark-subtle">@venue.Type</span>
+                                            <span class="fw-bold text-primary">@venue.Acronym</span>
+                                        </div>
+                                        <h5 class="fw-bold text-dark">@venue.Name</h5>
+                                        <p class="text-muted small text-truncate-2 mb-4">@(venue.Description.Length > 100 ? venue.Description.Substring(0, 100) + "..." : venue.Description)</p>
+                                        <button class="btn btn-primary w-100 fw-bold rounded-pill" @onclick='() => Nav.NavigateTo($"/submit/{venue.Id}")'>
+                                            Submit Manuscript
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     }
     else
     {
-        <!-- GREETING SECTION -->
-        <div class="mb-5">
-            <h2 class="fw-bold text-dark">Welcome back, <span class="text-primary">@userName</span>!</h2>
-            <p class="text-muted">Here is what’s happening in your academic circle today.</p>
+        <!-- Genel Karşılama (Tanımsız Roller) -->
+        <div class="text-center p-5 border rounded-3 bg-light bg-opacity-50">
+            <i class="bi bi-person-circle fs-2 text-muted"></i>
+            <h5 class="fw-bold mt-3">Welcome to the JARVIS Platform</h5>
+            <p class="text-muted">Use the sidebar to navigate your specific workspace.</p>
         </div>
-
-        @if (userRole == "Reviewer")
-        {
-            <!-- REVIEWER DASHBOARD (Modern Cards) -->
-            <div class="row g-4 mb-5">
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 border-0 shadow-sm hover-card bg-warning-subtle">
-                        <div class="card-body p-4 d-flex align-items-center justify-content-between" @onclick='() => Nav.NavigateTo("/my-reviews")' style="cursor:pointer">
-                            <div>
-                                <h6 class="text-warning-emphasis text-uppercase fw-bold ls-1 mb-1">Invitations</h6>
-                                <h1 class="display-4 fw-bold mb-0 text-dark">@invitationCount</h1>
-                                <small class="text-muted">Pending Response</small>
-                            </div>
-                            <i class="bi bi-envelope-paper fs-1 text-warning opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 border-0 shadow-sm hover-card bg-primary-subtle">
-                        <div class="card-body p-4 d-flex align-items-center justify-content-between" @onclick='() => Nav.NavigateTo("/my-reviews")' style="cursor:pointer">
-                            <div>
-                                <h6 class="text-primary-emphasis text-uppercase fw-bold ls-1 mb-1">Active Reviews</h6>
-                                <h1 class="display-4 fw-bold mb-0 text-dark">@pendingReviewCount</h1>
-                                <small class="text-muted">In Progress</small>
-                            </div>
-                            <i class="bi bi-pencil-square fs-1 text-primary opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
-        else if (userRole == "EditorInChief" || userRole == "TrackChair" || userRole == "Admin")
-        {
-            <!-- EDITOR DASHBOARD -->
-            <EditorDashboard SearchTerm="@searchTerm" FilterStatus="@filterType" />
-        }
-        else
-        {
-            <!-- AUTHOR DASHBOARD -->
-            <!-- 1. MY SUBMISSIONS (Modern Timeline/List) -->
-            @if (myActiveConferences.Any())
-            {
-                <div class="d-flex align-items-center mb-3">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-folder2-open me-2 text-primary"></i>My Submissions</h5>
-                </div>
-                <div class="row g-3 mb-5">
-                    @foreach (var item in myActiveConferences)
-                    {
-                        <div class="col-md-6 col-xl-4">
-                            <div class="card border-0 shadow-sm h-100 submission-card">
-                                <div class="card-body p-4">
-                                    <div class="d-flex justify-content-between align-items-start mb-3">
-                                        <span class="badge @GetStatusClass(item.Status) px-3 py-2 rounded-pill">@item.Status</span>
-                                        <small class="text-muted"><i class="bi bi-clock me-1"></i>@item.SubmissionDate.ToString("MMM dd")</small>
-                                    </div>
-                                    <h6 class="fw-bold text-dark mb-2 text-truncate-2" title="@item.SubmissionTitle">@item.SubmissionTitle</h6>
-                                    <p class="text-muted small mb-3"><i class="bi bi-geo-alt me-1"></i>@item.VenueName</p>
-                                    <button class="btn btn-outline-primary btn-sm w-100 rounded-pill" @onclick='() => Nav.NavigateTo($"/submissions/{item.SubmissionId}")'>
-                                        View Status
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-
-            <!-- 2. AVAILABLE VENUES (Modern Search & List) -->
-            <div class="d-flex justify-content-between align-items-end mb-4">
-                <div>
-                    <h4 class="fw-bold mb-1">Open Calls for Papers</h4>
-                    <p class="text-muted mb-0 small">Explore journals and conferences accepting submissions.</p>
-                </div>
-            </div>
-
-            <!-- Search Bar Area -->
-            <div class="card border-0 shadow-sm mb-4 p-2">
-                <div class="d-flex gap-2">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" class="form-control border-0 py-2 shadow-none"
-                               placeholder="Search by name, acronym or topic..."
-                               @bind="searchTerm"
-                               @bind:event="oninput" />
-                    </div>
-                    <select class="form-select border-0 bg-light py-2" style="max-width: 200px;" @bind="filterType">
-                        <option value="">All Types</option>
-                        <option value="Conference">Conferences</option>
-                        <option value="Journal">Journals</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Modern Venue List (Cards instead of Table) -->
-            <div class="d-flex flex-column gap-3">
-                @if (FilteredVenues.Any())
-                {
-                    @foreach (var venue in FilteredVenues)
-                    {
-                        <div class="card border-0 shadow-sm venue-card transition-all">
-                            <div class="card-body p-4">
-                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-
-                                    <!-- Sol Taraf: İsim ve Etiketler -->
-                                    <div class="d-flex align-items-center gap-3 flex-grow-1" style="cursor: pointer;" @onclick="() => ToggleDetails(venue)">
-                                        <div class="venue-icon bg-light text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 50px; height: 50px;">
-                                            <i class="bi @(venue.Type == "Journal" ? "bi-journal-richtext" : "bi-people-fill") fs-4"></i>
-                                        </div>
-                                        <div>
-                                            <div class="d-flex align-items-center gap-2 mb-1">
-                                                <h6 class="fw-bold text-dark mb-0 hover-underline">@venue.Name</h6>
-                                                <span class="badge bg-light text-secondary border">@venue.Acronym</span>
-                                            </div>
-                                            <div class="text-muted small">
-                                                <span class="me-3"><i class="bi bi-tag me-1"></i>@venue.Type</span>
-                                                @if (!string.IsNullOrEmpty(venue.Keywords))
-                                                {
-                                                    <span><i class="bi bi-hash me-1"></i>@venue.Keywords.Split(',').FirstOrDefault()...</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Sağ Taraf: Aksiyonlar -->
-                                    <div class="d-flex align-items-center gap-2">
-                                        <button class="btn btn-light btn-sm text-muted rounded-pill px-3" @onclick="() => ToggleDetails(venue)">
-                                            @(venue.IsExpanded ? "Hide Details" : "View Details") <i class="bi @(venue.IsExpanded ? "bi-chevron-up" : "bi-chevron-down") ms-1"></i>
-                                        </button>
-                                        <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" @onclick="@(() => Nav.NavigateTo($"/submit/{venue.Id}"))">
-                                            Submit Paper
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- EXPANDABLE DETAILS AREA -->
-                                @if (venue.IsExpanded)
-                                {
-                                    <div class="mt-4 pt-3 border-top fade-in">
-                                        <div class="row g-4">
-                                            <div class="col-md-8">
-                                                <h6 class="text-uppercase text-muted small fw-bold mb-2 ls-1">Aim & Scope</h6>
-                                                <p class="text-secondary mb-0 small lh-lg">
-                                                    @(string.IsNullOrEmpty(venue.Description) ? "No detailed scope description provided." : venue.Description)
-                                                </p>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <h6 class="text-uppercase text-muted small fw-bold mb-2 ls-1">Available Tracks</h6>
-                                                @if (venue.Tracks.Any())
-                                                {
-                                                    <div class="d-flex flex-wrap gap-2">
-                                                        @foreach (var track in venue.Tracks)
-                                                        {
-                                                            <span class="badge bg-light text-dark border fw-normal py-2 px-3">@track</span>
-                                                        }
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted small">General Track</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div class="text-center py-5">
-                        <img src="https://cdn-icons-png.flaticon.com/512/7486/7486754.png" width="80" class="mb-3 opacity-50 grayscale" />
-                        <h5 class="text-muted fw-bold">No venues found</h5>
-                        <p class="text-muted small">Try adjusting your search terms or filters.</p>
-                    </div>
-                }
-            </div>
-        }
     }
 </div>
-
-<style>
-    /* Custom Styles for Modern Dashboard */
-    .ls-1 {
-        letter-spacing: 1px;
-    }
-
-    .text-truncate-2 {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    .hover-card:hover {
-        transform: translateY(-5px);
-        transition: all 0.3s ease;
-    }
-
-    .submission-card {
-        transition: all 0.3s ease;
-        border-left: 4px solid transparent;
-    }
-
-        .submission-card:hover {
-            border-left-color: var(--bs-primary);
-            transform: translateX(5px);
-        }
-
-    .venue-card {
-        transition: all 0.2s ease;
-    }
-
-        .venue-card:hover {
-            box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
-        }
-
-    .hover-underline:hover {
-        text-decoration: underline;
-    }
-
-    .fade-in {
-        animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @@keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .grayscale {
-        filter: grayscale(100%);
-    }
-</style>
 
 @code {
     private string userRole = "";
     private string userName = "";
-    private bool isLoading = true;
+    private string searchTerm = "";
+    private List<VenueDto>? myManagedVenues;
+    private List<VenueDto>? allVenues;
+    private List<SubmissionListModel>? mySubmissions;
+    private Guid selectedVenueId = Guid.Empty;
+    private bool isLoading = true; // Yükleme state'i eklendi
 
-    // Reviewer Data
+    // Reviewer İstatistik Alanları
+    private List<ReviewAssignmentModel>? reviewerAssignments;
     private int invitationCount = 0;
     private int pendingReviewCount = 0;
 
-    // Author Data
-    private List<VenueDto> allVenues = new();
-    private List<MyConferenceViewModel> myActiveConferences = new();
 
-    // Search & Filter
-    private string searchTerm = "";
-    private string filterType = "";
-
-    // Filtrelenmiş Liste
-    private IEnumerable<VenueDto> FilteredVenues => allVenues
-        .Where(v =>
-            (string.IsNullOrEmpty(searchTerm) ||
-             v.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-             v.Acronym.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-             (v.Keywords != null && v.Keywords.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))) &&
-            (string.IsNullOrEmpty(filterType) || v.Type == filterType)
-        );
+    private IEnumerable<VenueDto> FilteredVenues =>
+        allVenues?.Where(v => string.IsNullOrEmpty(searchTerm) ||
+                         v.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         v.Acronym.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        ?? new List<VenueDto>();
 
     protected override async Task OnInitializedAsync()
     {
+        isLoading = true;
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        if (user.Identity != null && user.Identity.IsAuthenticated)
+        if (user.Identity?.IsAuthenticated == true)
         {
+            userName = user.Identity.Name ?? "User";
             userRole = user.Claims.FirstOrDefault(c => c.Type.Contains("role"))?.Value ?? "User";
-            userName = user.Identity.Name ?? "Scholar";
 
-            if (userRole == "Reviewer")
+            if (userRole == "EditorInChief" || userRole == "Admin")
             {
-                try
-                {
-                    var reviews = await ReviewsClient.GetMyAssignmentsAsync();
-                    invitationCount = reviews.Count(r => r.Status == "Invited");
-                    pendingReviewCount = reviews.Count(r => r.Status == "Accepted");
-                }
-                catch { }
+                myManagedVenues = await VenueService.GetMyManagedVenuesAsync();
+                if (myManagedVenues != null && myManagedVenues.Any())
+                    selectedVenueId = myManagedVenues.First().Id;
             }
-            else
+            else if (userRole == "Reviewer")
             {
+                // REVIEWER İŞ YÜKÜNÜ YÜKLE
                 try
                 {
-                    // Paralel Veri Çekimi
-                    var venuesTask = VenueService.GetAllVenuesAsync();
-                    var submissionsTask = SubmissionsClient.GetMySubmissionsAsync();
-
-                    await Task.WhenAll(venuesTask, submissionsTask);
-
-                    allVenues = venuesTask.Result;
-                    var mySubmissions = submissionsTask.Result;
-
-                    myActiveConferences = mySubmissions.Select(s => new MyConferenceViewModel
-                    {
-                        SubmissionId = s.Id,
-                        SubmissionTitle = s.Title,
-                        Status = s.Status,
-                        SubmissionDate = s.CreatedAt,
-                        VenueName = allVenues.FirstOrDefault(v => v.Id == s.VenueId)?.Name ?? "Unknown Venue"
-                    }).ToList();
+                    reviewerAssignments = await ReviewsClient.GetMyAssignmentsAsync();
+                    invitationCount = reviewerAssignments.Count(r => r.Status == "Invited");
+                    pendingReviewCount = reviewerAssignments.Count(r => r.Status == "Accepted");
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error: {ex.Message}");
-                }
+                catch { reviewerAssignments = new(); }
+            }
+            else if (userRole == "Author" || userRole == "User")
+            {
+                // YAZAR VE TEMEL USERLAR İÇİN
+                allVenues = await VenueService.GetAllVenuesAsync();
+                mySubmissions = await SubmissionsClient.GetMySubmissionsAsync();
             }
         }
         isLoading = false;
     }
 
-    private void ToggleDetails(VenueDto venue)
+    private void SelectVenue(Guid id)
     {
-        venue.IsExpanded = !venue.IsExpanded;
+        selectedVenueId = id;
+        StateHasChanged();
     }
 
-    private string GetStatusClass(string status) => status switch
+    private string GetStatusClass(string? s) => s switch
     {
-        "Draft" => "bg-secondary bg-opacity-10 text-secondary",
-        "Submitted" => "bg-info bg-opacity-10 text-info",
-        "UnderReview" => "bg-warning bg-opacity-10 text-warning",
-        "Accepted" => "bg-success bg-opacity-10 text-success",
-        "Rejected" => "bg-danger bg-opacity-10 text-danger",
-        _ => "bg-light text-dark"
+        "Submitted" => "bg-info-subtle text-info",
+        "UnderReview" => "bg-primary-subtle text-primary",
+        "MinorRevisionRequired" => "bg-info text-white",
+        "MajorRevisionRequired" => "bg-primary text-white",
+        "CameraReadyRequested" => "bg-warning text-dark",
+        "CameraReadySubmitted" => "bg-success text-white",
+        "Accepted" => "bg-success text-white",
+        "Rejected" => "bg-danger text-white",
+        _ => "bg-light text-dark border"
     };
-
-    public class MyConferenceViewModel
-    {
-        public Guid SubmissionId { get; set; }
-        public string VenueName { get; set; } = "";
-        public string SubmissionTitle { get; set; } = "";
-        public string Status { get; set; } = "";
-        public DateTime SubmissionDate { get; set; }
-    }
 }

@@ -30,10 +30,7 @@ public class SubmissionsClient
     public async Task<Guid> SubmitAsync(SubmissionModel model, IBrowserFile file)
     {
         await AddAuthHeader();
-
         using var content = new MultipartFormDataContent();
-
-        // Temel Bilgiler
         content.Add(new StringContent(model.VenueId.ToString()), "VenueId");
         content.Add(new StringContent(model.VenueEditionId.ToString()), "VenueEditionId");
         content.Add(new StringContent(model.CallForPapersId.ToString()), "CallForPapersId");
@@ -42,22 +39,13 @@ public class SubmissionsClient
         content.Add(new StringContent(model.Abstract), "Abstract");
         content.Add(new StringContent(model.Keywords), "Keywords");
         content.Add(new StringContent(model.Type.ToString()), "Type");
-
-        // Bildirim Bilgileri
         content.Add(new StringContent(model.SubmitterEmail), "SubmitterEmail");
         content.Add(new StringContent(model.SubmitterName), "SubmitterName");
-
-        if (!string.IsNullOrEmpty(model.OrganizerEmail))
-        {
-            content.Add(new StringContent(model.OrganizerEmail), "OrganizerEmail");
-        }
-
-        // Deklarasyonlar
+        if (!string.IsNullOrEmpty(model.OrganizerEmail)) content.Add(new StringContent(model.OrganizerEmail), "OrganizerEmail");
         content.Add(new StringContent(model.IsOriginal.ToString()), "IsOriginal");
         content.Add(new StringContent(model.IsNotElsewhere.ToString()), "IsNotElsewhere");
         content.Add(new StringContent(model.HasConsent.ToString()), "HasConsent");
 
-        // Yazarlar Listesi (Dinamik Loop)
         for (int i = 0; i < model.Authors.Count; i++)
         {
             content.Add(new StringContent(model.Authors[i].FirstName), $"Authors[{i}].FirstName");
@@ -68,19 +56,11 @@ public class SubmissionsClient
             content.Add(new StringContent(model.Authors[i].IsCorresponding.ToString()), $"Authors[{i}].IsCorresponding");
         }
 
-        // WORD DOSYASI (.docx)
-        var fileContent = new StreamContent(file.OpenReadStream(1024 * 1024 * 15)); // Max 15MB
+        var fileContent = new StreamContent(file.OpenReadStream(1024 * 1024 * 15));
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
         content.Add(fileContent, "ManuscriptFile", file.Name);
 
         var response = await _httpClient.PostAsync("api/Submissions", content);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Submission failed: {error}");
-        }
-
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         return json.GetProperty("id").GetGuid();
     }
@@ -88,21 +68,11 @@ public class SubmissionsClient
     public async Task FinalizeAsync(Guid id, string userId)
     {
         await AddAuthHeader();
-        var response = await _httpClient.PostAsync($"api/Submissions/{id}/finalize", null);
-
-        if (response.IsSuccessStatusCode)
-        {
-            // Kullanıcıya Author rolü ata (Backend Identity API)
-            var token = await _localStorage.GetItemAsync<string>("authToken");
-            using var authUpdateClient = new HttpClient();
-            authUpdateClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            await authUpdateClient.PostAsync($"https://localhost:7041/api/users/set-author-role/{userId}", null);
-        }
-        else
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Finalization failed: {error}");
-        }
+        await _httpClient.PostAsync($"api/Submissions/{id}/finalize", null);
+        var token = await _localStorage.GetItemAsync<string>("authToken");
+        using var authUpdateClient = new HttpClient();
+        authUpdateClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        await authUpdateClient.PostAsync($"https://localhost:7041/api/users/set-author-role/{userId}", null);
     }
 
     public async Task<List<SubmissionListModel>> GetMySubmissionsAsync()
@@ -114,13 +84,35 @@ public class SubmissionsClient
     public async Task<SubmissionDetailModel?> GetSubmissionDetailAsync(Guid id)
     {
         await AddAuthHeader();
-        try { return await _httpClient.GetFromJsonAsync<SubmissionDetailModel>($"api/Submissions/{id}"); }
-        catch { return null; }
+        return await _httpClient.GetFromJsonAsync<SubmissionDetailModel>($"api/Submissions/{id}");
     }
 
-    public async Task<List<SubmissionStatsModel>> GetEditorSubmissionsAsync()
+    // TEK BİR TANE KALACAK ŞEKİLDE GÜNCELLENDİ
+    public async Task<List<SubmissionStatsModel>> GetEditorSubmissionsAsync(Guid? venueId = null)
     {
         await AddAuthHeader();
-        return await _httpClient.GetFromJsonAsync<List<SubmissionStatsModel>>("api/Submissions/all") ?? new();
+        var url = venueId.HasValue && venueId.Value != Guid.Empty
+                  ? $"api/Submissions/all?venueId={venueId.Value}"
+                  : "api/Submissions/all";
+
+        return await _httpClient.GetFromJsonAsync<List<SubmissionStatsModel>>(url) ?? new();
+    }
+
+    public async Task UploadRevisionAsync(Guid submissionId, IBrowserFile file, string type)
+    {
+        await AddAuthHeader();
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(file.OpenReadStream(15 * 1024 * 1024));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        content.Add(fileContent, "file", file.Name);
+        await _httpClient.PostAsync($"api/Submissions/{submissionId}/upload-revision?type={type}", content);
+    }
+
+    public async Task RecordDecisionAsync(Guid submissionId, string decision, string decisionLetter)
+    {
+        await AddAuthHeader();
+        int decisionValue = decision switch { "Accepted" => 7, "Rejected" => 8, "MinorRevisionRequired" => 3, "MajorRevisionRequired" => 4, _ => 0 };
+        var payload = new { SubmissionId = submissionId, Decision = decisionValue, DecisionLetter = decisionLetter, NotifyAuthor = true };
+        await _httpClient.PostAsJsonAsync($"api/Submissions/{submissionId}/decision", payload);
     }
 }

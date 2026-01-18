@@ -1,0 +1,29 @@
+﻿@page "/manage-venue/{VenueId:guid}"
+@attribute [Authorize(Roles = "EditorInChief,Admin")]
+@using Jarvis.Web.Models
+@using Jarvis.Web.Services
+@inject SubmissionsClient SubmissionsClient
+@inject VenueApiService VenueService
+@inject NavigationManager Nav
+
+<div class="container py-4">
+    <div class="mb-4">
+        <button class="btn btn-link p-0 text-decoration-none text-muted" @onclick='() => Nav.NavigateTo("/dashboard")'>
+            <i class="bi bi-arrow-left"></i> Back to Venues
+        </button>
+        <h2 class="fw-bold mt-2">Managing: @venueName</h2>
+    </div>
+
+    <EditorDashboard VenueId="VenueId" />
+</div>
+
+@code {
+    [Parameter] public Guid VenueId { get; set; }
+    private string venueName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var details = await VenueService.GetVenueDetailsAsync(VenueId);
+        venueName = details?.Name ?? "Venue";
+    }
+}
