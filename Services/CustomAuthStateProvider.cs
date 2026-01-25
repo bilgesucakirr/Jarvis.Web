@@ -27,6 +27,9 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
     {
         try
         {
+            // Blazor'un JS Runtime'ı başlatmasına izin vermek için kısa bir bekleme (Yenileme sorununu çözmek için eklendi)
+            await Task.Delay(50);
+
             var token = await _localStorage.GetItemAsync<string>("authToken");
 
             if (string.IsNullOrWhiteSpace(token))
@@ -37,6 +40,7 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
             if (claims == null || !claims.Any())
                 return _anonymous;
 
+            // Token bulunduğunda, HttpClient başlığını ayarla
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
 
             return new AuthenticationState(
@@ -44,6 +48,7 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
         }
         catch (Exception)
         {
+            // Herhangi bir hata durumunda (localStorage okunamaması dahil) anonim döndür
             return _anonymous;
         }
     }
@@ -60,6 +65,10 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
                 await _localStorage.SetItemAsync("authToken", result.Token);
                 var authenticatedUser =
                     new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(result.Token), "jwt"));
+
+                // Başarılı girişte HttpClient başlığını ayarla
+                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", result.Token);
+
                 NotifyAuthenticationStateChanged(
                     Task.FromResult(new AuthenticationState(authenticatedUser)));
             }
@@ -91,6 +100,10 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, IAuthService
                 await _localStorage.SetItemAsync("authToken", result.Token);
                 var authenticatedUser =
                     new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(result.Token), "jwt"));
+
+                // Başarılı kayıtta HttpClient başlığını ayarla
+                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", result.Token);
+
                 NotifyAuthenticationStateChanged(
                     Task.FromResult(new AuthenticationState(authenticatedUser)));
             }

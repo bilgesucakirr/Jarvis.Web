@@ -3,6 +3,7 @@
 @inject Jarvis.Web.Services.IAuthService AuthService
 @inject Jarvis.Web.Services.UsersClient UsersClient  // <-- Inject Edildiğinden Emin Olun
 @inject AuthenticationStateProvider AuthStateProvider
+@using Jarvis.Web.Components.Shared // SimpleChatBot için eklendi
 
 <div class="page">
     <div class="sidebar">
@@ -18,11 +19,11 @@
                         <!-- Profil Resmi Gösterimi -->
                         @if (!string.IsNullOrEmpty(userProfilePic))
                         {
-                                <img src="@userProfilePic" class="rounded-circle me-2 border" style="width: 36px; height: 36px; object-fit: cover;" />
+                                    <img src="@userProfilePic" class="rounded-circle me-2 border" style="width: 36px; height: 36px; object-fit: cover;" />
                         }
                         else
                         {
-                                <i class="bi bi-person-circle me-2 fs-4"></i>
+                                    <i class="bi bi-person-circle me-2 fs-4"></i>
                         }
                         @context.User.Identity?.Name
                     </span>
@@ -40,6 +41,10 @@
             @Body
         </article>
     </main>
+
+    <!-- CHATBOT ENTEGRASYONU -->
+    <SimpleChatBot />
+
 </div>
 
 @code {

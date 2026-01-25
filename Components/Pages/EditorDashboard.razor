@@ -10,6 +10,19 @@
             <p class="text-muted small mb-0">Tracking all manuscripts for this venue</p>
         </div>
         <div class="d-flex gap-2">
+            <!-- STATÜ FİLTRESİ EKLENDİ -->
+            <select class="form-select form-select-sm" @bind="selectedStatusFilter" style="width: 200px;">
+                <option value="">All Statuses</option>
+                <option value="Submitted">Submitted (Waiting for Review)</option>
+                <option value="UnderReview">Under Review</option>
+                <option value="MinorRevisionRequired">Minor Revision</option>
+                <option value="MajorRevisionRequired">Major Revision</option>
+                <option value="CameraReadyRequested">Accepted (Awaiting Final File)</option>
+                <option value="CameraReadySubmitted">Accepted (Final File Submitted)</option>
+                <option value="Accepted">Accepted (Final Decision)</option>
+                <option value="Rejected">Rejected</option>
+            </select>
+            <!-- Arama Inputu -->
             <div class="input-group input-group-sm" style="width: 250px;">
                 <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
                 <input type="text" class="form-control bg-light border-0" placeholder="Filter by title..." @bind="searchTerm" @bind:event="oninput" />
@@ -35,7 +48,7 @@
                 }
                 else if (!FilteredSubmissions.Any())
                 {
-                    <tr><td colspan="5" class="text-center py-5 text-muted">No submissions found for this venue.</td></tr>
+                    <tr><td colspan="5" class="text-center py-5 text-muted">No submissions found for this venue based on current filter.</td></tr>
                 }
                 else
                 {
@@ -70,7 +83,7 @@
                                     <button class="btn btn-sm btn-white border" @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}")' title="View Details">
                                         <i class="bi bi-eye-fill text-primary"></i>
                                     </button>
-                                    @if (sub.Status != "Draft" && sub.Status != "Rejected")
+                                    @if (sub.Status != "Draft" && sub.Status != "Rejected" && sub.Status != "CameraReadySubmitted" && sub.Status != "Accepted")
                                     {
                                         <button class="btn btn-sm btn-white border" @onclick='() => Nav.NavigateTo($"/submissions/{sub.Id}/assign")' title="Assign Reviewers">
                                             <i class="bi bi-person-plus-fill text-dark"></i>
@@ -91,8 +104,14 @@
     private List<SubmissionStatsModel>? submissions;
     private string searchTerm = "";
 
+    // YENİ FİLTRE DEĞİŞKENİ
+    private string selectedStatusFilter = "";
+
     private IEnumerable<SubmissionStatsModel> FilteredSubmissions =>
-        submissions?.Where(s => string.IsNullOrEmpty(searchTerm) || s.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        submissions?.Where(s =>
+            (string.IsNullOrEmpty(searchTerm) || s.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(selectedStatusFilter) || s.Status.Equals(selectedStatusFilter, StringComparison.OrdinalIgnoreCase))
+        )
         ?? new List<SubmissionStatsModel>();
 
     protected override async Task OnParametersSetAsync()
@@ -131,6 +150,8 @@
         "Accepted" => "bg-success-subtle text-success",
         "CameraReadySubmitted" => "bg-success text-white",
         "MinorRevisionRequired" => "bg-warning-subtle text-warning",
+        "MajorRevisionRequired" => "bg-primary-subtle text-primary",
+        "CameraReadyRequested" => "bg-warning text-dark",
         "Rejected" => "bg-danger-subtle text-danger",
         _ => "bg-light text-dark"
     };

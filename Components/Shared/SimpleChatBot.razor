@@ -1,0 +1,344 @@
+﻿@using System.Security.Claims
+@using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthStateProvider
+
+@rendermode InteractiveServer
+
+<!-- Chatbot Toggle Button (Sabit Düğme) -->
+<button class="chatbot-toggle-button btn @(isChatVisible ? "btn-dark" : "btn-primary") rounded-circle shadow-lg" @onclick="ToggleChat">
+    @if (isChatVisible)
+    {
+        <i class="bi bi-x-lg fs-5"></i>
+    }
+    else
+    {
+        <i class="bi bi-chat-dots-fill fs-5"></i>
+    }
+</button>
+
+@if (isChatVisible)
+{
+    <!-- Chatbot Penceresi -->
+    <div class="chatbot-window shadow-xl border rounded-4">
+        <!-- Header -->
+        <div class="chatbot-header p-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-white"><i class="bi bi-cpu me-2"></i>JARVIS Assistant</h6>
+            <button class="btn-close btn-close-white" @onclick="ToggleChat"></button>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chatbot-messages p-3" @ref="messagesContainer">
+            @foreach (var message in messages)
+            {
+                <div class="message @(message.Sender == "User" ? "user-message" : "bot-message")">
+                    <div class="text-content">
+                        @message.Text
+                    </div>
+                    <small class="time-stamp">@message.Time.ToString("HH:mm")</small>
+                </div>
+            }
+        </div>
+
+        <!-- Input Area -->
+        <div class="chatbot-input-area p-3 border-top">
+            <input type="text" class="form-control form-control-sm chatbot-input"
+                   @bind="userInput"
+                   @onkeyup="HandleKeyUp"
+                   placeholder="Type a command (e.g., 'venues', 'help')" />
+            <button class="btn btn-sm btn-primary ms-2 chatbot-send-btn" @onclick="HandleSend">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isChatVisible = false;
+    private string userInput = "";
+    private ElementReference messagesContainer;
+    private List<(string Sender, string Text, DateTime Time)> messages = new();
+    private ClaimsPrincipal? user;
+    private string userName = "Guest";
+    private bool isAuthenticated => user?.Identity?.IsAuthenticated ?? false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        userName = user?.Identity?.Name?.Split(' ')[0] ?? "Guest";
+    }
+
+    private string GetTimeOfDayGreeting()
+    {
+        var hour = DateTime.Now.Hour;
+        if (hour < 12) return "Good Morning";
+        if (hour < 18) return "Good Afternoon";
+        return "Good Evening";
+    }
+
+    private void ToggleChat()
+    {
+        isChatVisible = !isChatVisible;
+        if (isChatVisible && messages.Count == 0)
+        {
+            string greeting = GetTimeOfDayGreeting();
+
+            var welcomeMessage = isAuthenticated
+                ? $"{greeting}, {userName}! I am your JARVIS assistant. How can I help you today? Try 'help' for commands."
+                : "Welcome to JARVIS. Please login first to access personalized services. Try 'venues' to see open calls.";
+
+            messages.Add(("Bot", welcomeMessage, DateTime.Now));
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await HandleSend();
+        }
+    }
+
+    private bool HasRole(string role) => user?.IsInRole(role) ?? false;
+
+    private async Task HandleSend()
+    {
+        var input = userInput.Trim();
+        if (string.IsNullOrEmpty(input)) return;
+
+        messages.Add(("User", input, DateTime.Now));
+        userInput = "";
+        StateHasChanged();
+
+        var lowerInput = input.ToLowerInvariant();
+        string botResponse;
+        string? targetUrl = null;
+
+        await Task.Delay(300);
+
+        // --- AUTHENTICATION KONTROLÜ VE YÖNLENDİRME ---
+        if (!isAuthenticated)
+        {
+            if (lowerInput.Contains("login") || lowerInput.Contains("signin"))
+            {
+                botResponse = "Redirecting you to the login page.";
+                targetUrl = "/login";
+            }
+            else if (lowerInput.Contains("register") || lowerInput.Contains("signup"))
+            {
+                botResponse = "Redirecting you to the registration page.";
+                targetUrl = "/register";
+            }
+            else if (lowerInput.Contains("venues") || lowerInput.Contains("cfp"))
+            {
+                botResponse = "You can view all open Calls for Papers. Redirecting now.";
+                targetUrl = "/venues";
+            }
+            else if (lowerInput.Contains("hello") || lowerInput.Contains("hi"))
+            {
+                botResponse = $"{GetTimeOfDayGreeting()}! I'm JARVIS. How can I assist a potential user?";
+            }
+            else
+            {
+                botResponse = "You must be logged in to use personalized commands. Try 'login' or 'venues'.";
+            }
+        }
+        // --- YETKİLİ KULLANICI KOMUTLARI ---
+        else
+        {
+            if (lowerInput.Contains("hello") || lowerInput.Contains("hi"))
+            {
+                botResponse = $"{GetTimeOfDayGreeting()}, {userName}! Ready for your next command. Try 'help'.";
+            }
+            else if (lowerInput.Contains("venues") || lowerInput.Contains("cfp") || lowerInput.Contains("conferences"))
+            {
+                botResponse = "Showing all available venues/CFPs in your dashboard.";
+                targetUrl = "/dashboard";
+            }
+            else if (lowerInput.Contains("profile"))
+            {
+                botResponse = "Opening your personal profile settings.";
+                targetUrl = "/profile";
+            }
+            else if (lowerInput.Contains("submissions") && HasRole("Author"))
+            {
+                botResponse = "Here are your active manuscript submissions. Redirecting now.";
+                targetUrl = "/my-submissions";
+            }
+            else if (lowerInput.Contains("reviews") && HasRole("Reviewer"))
+            {
+                botResponse = "Accessing your pending review assignments. Redirecting now.";
+                targetUrl = "/my-reviews";
+            }
+            else if ((lowerInput.Contains("editor") || lowerInput.Contains("manage")) && (HasRole("Admin") || HasRole("EditorInChief")))
+            {
+                botResponse = "Opening your editor management panel. Redirecting now.";
+                targetUrl = "/dashboard";
+            }
+            else if (lowerInput == "help" || lowerInput.Contains("commands"))
+            {
+                var roleCommands = new List<string> { "venues", "profile" };
+                if (HasRole("Author")) roleCommands.Add("submissions");
+                if (HasRole("Reviewer")) roleCommands.Add("reviews");
+                if (HasRole("Admin") || HasRole("EditorInChief")) roleCommands.Add("manage");
+
+                botResponse = $"Available commands for your roles ({user?.Identity?.Name}): {string.Join(", ", roleCommands)}.";
+            }
+            else
+            {
+                botResponse = $"I couldn't find a direct path for '{input}'. Try 'help' to see valid commands for your user role.";
+            }
+        }
+
+        messages.Add(("Bot", botResponse, DateTime.Now));
+        StateHasChanged();
+
+        await Task.Delay(50);
+        await ScrollToBottom();
+
+        if (targetUrl is not null)
+        {
+            // Basit yönlendirme (hard refresh yapabilir, ancak Blazor Server'da en güvenilir yöntem budur)
+            await Task.Delay(800);
+            Navigation.NavigateTo(targetUrl);
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", "var element = document.querySelector('.chatbot-messages'); if (element) element.scrollTop = element.scrollHeight;");
+    }
+}
+
+<style>
+    :root {
+        --chat-primary: #3b82f6; /* Accent Color */
+        --chat-secondary: #0f172a; /* Primary Color */
+        --chat-bg: #f7f9fc;
+    }
+
+    /* Global Shadow */
+    .shadow-xl {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Sabit Düğme */
+    .chatbot-toggle-button {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+        z-index: 1100;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .chatbot-toggle-button:hover {
+            transform: scale(1.05);
+        }
+
+    /* Chat Penceresi */
+    .chatbot-window {
+        position: fixed;
+        bottom: 100px;
+        right: 25px;
+        width: 360px;
+        height: 500px;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        z-index: 1100;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Header */
+    .chatbot-header {
+        background-color: var(--chat-secondary); /* Koyu Sidebar Rengi */
+        color: white;
+        border-radius: 12px 12px 0 0;
+        border-bottom: 3px solid var(--chat-primary);
+    }
+
+    /* Mesaj Alanı */
+    .chatbot-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background-color: var(--chat-bg);
+    }
+
+    /* Mesaj Balonları */
+    .message {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 18px;
+        line-height: 1.4;
+        position: relative;
+        font-size: 0.9rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .user-message {
+        align-self: flex-end;
+        background-color: var(--chat-primary);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .bot-message {
+        align-self: flex-start;
+        background-color: white;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        border-bottom-left-radius: 4px;
+    }
+
+    .time-stamp {
+        display: block;
+        margin-top: 4px;
+        font-size: 0.6rem;
+        opacity: 0.6;
+        color: inherit;
+    }
+
+    .user-message .time-stamp {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Input Alanı */
+    .chatbot-input-area {
+        display: flex;
+        padding: 10px;
+        background-color: white;
+    }
+
+    .chatbot-input {
+        border-radius: 20px !important;
+        border: 1px solid #cbd5e1;
+        background-color: #f8fafc;
+        padding: 8px 15px;
+    }
+
+    .chatbot-send-btn {
+        border-radius: 20px !important;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .chatbot-send-btn i {
+            font-size: 1rem;
+            margin-right: 0 !important;
+        }
+
+</style>
